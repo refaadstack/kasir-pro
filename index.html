@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>KasirPro</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  *{font-family:'Sora',sans-serif;box-sizing:border-box;}
+  body{margin:0;background:#0c0c11;color:#e8e8f0;min-height:100vh;display:flex;align-items:center;justify-content:center;}
+  .card{background:#13131c;border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:28px 24px;transition:all .2s;cursor:pointer;text-decoration:none;display:block;}
+  .card:hover{border-color:rgba(245,166,35,.4);background:rgba(245,166,35,.05);transform:translateY(-2px);box-shadow:0 8px 32px rgba(245,166,35,.1);}
+</style>
+</head>
+<body>
+  <div style="width:100%;max-width:360px;padding:20px;">
+    <!-- Logo -->
+    <div style="text-align:center;margin-bottom:36px;">
+      <div style="width:52px;height:52px;border-radius:16px;background:#f5a623;display:flex;align-items:center;justify-content:center;font-size:26px;color:#111;font-weight:900;margin:0 auto 14px;">⬡</div>
+      <div style="font-size:24px;font-weight:900;letter-spacing:-.5px;">KASIR<span style="color:#f5a623;">PRO</span></div>
+      <div style="font-size:12px;color:rgba(232,232,240,.4);margin-top:4px;">Sistem Point of Sale</div>
+    </div>
+
+    <!-- Pilihan -->
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <a href="./kasir/" class="card">
+        <div style="display:flex;align-items:center;gap:14px;">
+          <div style="width:44px;height:44px;border-radius:12px;background:rgba(62,207,142,.12);border:1px solid rgba(62,207,142,.2);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">🖥</div>
+          <div>
+            <div style="font-size:14px;font-weight:700;">Halaman Kasir</div>
+            <div style="font-size:11px;color:rgba(232,232,240,.45);margin-top:2px;">POS · Transaksi · Shift</div>
+          </div>
+          <div style="margin-left:auto;color:rgba(232,232,240,.25);font-size:18px;">›</div>
+        </div>
+      </a>
+
+      <a href="./admin/" class="card">
+        <div style="display:flex;align-items:center;gap:14px;">
+          <div style="width:44px;height:44px;border-radius:12px;background:rgba(245,166,35,.12);border:1px solid rgba(245,166,35,.2);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">⚙</div>
+          <div>
+            <div style="font-size:14px;font-weight:700;">Admin Panel</div>
+            <div style="font-size:11px;color:rgba(232,232,240,.45);margin-top:2px;">Produk · Karyawan · Laporan</div>
+          </div>
+          <div style="margin-left:auto;color:rgba(232,232,240,.25);font-size:18px;">›</div>
+        </div>
+      </a>
+    </div>
+
+    <div style="text-align:center;margin-top:28px;font-size:10px;color:rgba(232,232,240,.2);">
+      v2.5 · Demo Frontend
+    </div>
+  </div>
+</body>
+</html>
