@@ -2,7 +2,7 @@
 
 > **Sistem Point of Sale (POS) modern berbasis web** — ringan, responsif, dan siap diintegrasikan ke Laravel.
 
-🔗 **Live Demo:** [username.github.io/kasirpro](https://username.github.io/kasirpro)
+🔗 **Live Demo:** [refaadstack.github.io/kasirpro](https://refaadstack.github.io/kasirpro)
 
 ---
 
