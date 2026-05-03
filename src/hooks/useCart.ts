@@ -1,13 +1,13 @@
 'use client'
-
 import { useReducer, useCallback } from 'react'
 
-interface CartItem {
+export interface CartItem {
   id: string
   name: string
   price: number
   sku: string
   qty: number
+  emoji?: string
   imageUrl?: string
 }
 
@@ -70,14 +70,5 @@ export function useCart() {
   const totalItems = cart.reduce((sum, item) => sum + item.qty, 0)
   const totalPrice = cart.reduce((sum, item) => sum + (item.price * item.qty), 0)
 
-  return {
-    cart,
-    addItem,
-    updateQty,
-    removeItem,
-    clearCart,
-    totalItems,
-    totalPrice,
-  }
+  return { cart, addItem, updateQty, removeItem, clearCart, totalItems, totalPrice }
 }
-
