@@ -1,6 +1,5 @@
 'use client'
-
-import { useAuth } from '@/hooks/useAuth'
+import { useAuth } from '@/context/AuthContext'
 
 export default function DashboardLayout({
   children,
@@ -19,4 +18,3 @@ export default function DashboardLayout({
     </div>
   )
 }
-
