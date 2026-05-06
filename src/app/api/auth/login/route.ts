@@ -78,8 +78,8 @@ export async function POST(req: NextRequest) {
     const redirectMap: Record<string, string> = {
       KASIR: '/dashboard/kasir',
       SUPERVISOR: '/dashboard/supervisor',
+      MANAGER: '/dashboard/manager',
       SUPERADMIN: '/dashboard/superadmin',
-      MANAGER: '/dashboard/supervisor', // MANAGER sama dengan SUPERVISOR
     }
 
     const response = NextResponse.json({
