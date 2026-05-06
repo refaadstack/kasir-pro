@@ -25,8 +25,8 @@ jobs:
         run: npm ci
 
       - name: Run ESLint
-        run: npm run lint
-        continue-on-error: true
+        run: npm run lint -- --max-warnings=100
+        continue-on-error: false
 
       - name: Type check with TypeScript
         run: npx tsc --noEmit
