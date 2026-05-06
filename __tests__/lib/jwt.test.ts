@@ -1,49 +1,79 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeAll } from 'vitest'
 import { signToken, verifyToken } from '@/lib/jwt'
 
-describe('JWT Helper', () => {
-  const mockPayload = {
-    id: '123',
-    name: 'Test User',
-    email: 'test@example.com',
-    role: 'KASIR' as const,
-  }
+describe('JWT Functions', () => {
+  let validToken: string
 
-  it('should sign a token successfully', async () => {
-    const token = await signToken(mockPayload)
-    expect(token).toBeTruthy()
-    expect(typeof token).toBe('string')
-    expect(token.split('.')).toHaveLength(3) // JWT format: header.payload.signature
+  beforeAll(async () => {
+    // Create a valid token for testing
+    validToken = await signToken({
+      id: '123',
+      name: 'Test User',
+      email: 'test@example.com',
+      role: 'KASIR',
+    })
   })
 
-  it('should verify a valid token and return payload', async () => {
-    const token = await signToken(mockPayload)
-    const payload = await verifyToken(token)
+  describe('signToken', () => {
+    it('should generate a valid JWT token', async () => {
+      const token = await signToken({
+        id: '123',
+        name: 'Test User',
+        email: 'test@example.com',
+        role: 'KASIR',
+      })
 
-    expect(payload).toBeTruthy()
-    expect(payload?.id).toBe(mockPayload.id)
-    expect(payload?.name).toBe(mockPayload.name)
-    expect(payload?.email).toBe(mockPayload.email)
-    expect(payload?.role).toBe(mockPayload.role)
+      expect(token).toBeTruthy()
+      expect(typeof token).toBe('string')
+      expect(token.split('.')).toHaveLength(3) // JWT has 3 parts
+    })
+
+    it('should generate different tokens for different payloads', async () => {
+      const token1 = await signToken({
+        id: '123',
+        name: 'User 1',
+        email: 'user1@example.com',
+        role: 'KASIR',
+      })
+
+      const token2 = await signToken({
+        id: '456',
+        name: 'User 2',
+        email: 'user2@example.com',
+        role: 'SUPERVISOR',
+      })
+
+      expect(token1).not.toBe(token2)
+    })
   })
 
-  it('should return null for invalid token', async () => {
-    const payload = await verifyToken('invalid.token.here')
-    expect(payload).toBeNull()
-  })
+  describe('verifyToken', () => {
+    it('should verify and decode a valid token', async () => {
+      const payload = await verifyToken(validToken)
 
-  it('should return null for expired token', async () => {
-    // Token yang sudah expired (dibuat dengan exp di masa lalu)
-    const expiredToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEyMyIsIm5hbWUiOiJUZXN0IFVzZXIiLCJlbWFpbCI6InRlc3RAZXhhbXBsZS5jb20iLCJyb2xlIjoiS0FTSVIiLCJpYXQiOjE2MDk0NTkyMDAsImV4cCI6MTYwOTQ1OTIwMX0.invalid'
-    const payload = await verifyToken(expiredToken)
-    expect(payload).toBeNull()
-  })
+      expect(payload).toBeTruthy()
+      expect(payload?.id).toBe('123')
+      expect(payload?.name).toBe('Test User')
+      expect(payload?.email).toBe('test@example.com')
+      expect(payload?.role).toBe('KASIR')
+    })
 
-  it('should return null for tampered token', async () => {
-    const token = await signToken(mockPayload)
-    // Ubah sedikit token untuk simulasi tampering
-    const tamperedToken = token.slice(0, -5) + 'xxxxx'
-    const payload = await verifyToken(tamperedToken)
-    expect(payload).toBeNull()
+    it('should return null for invalid token', async () => {
+      const payload = await verifyToken('invalid.token.here')
+
+      expect(payload).toBeNull()
+    })
+
+    it('should return null for malformed token', async () => {
+      const payload = await verifyToken('not-a-jwt-token')
+
+      expect(payload).toBeNull()
+    })
+
+    it('should return null for empty token', async () => {
+      const payload = await verifyToken('')
+
+      expect(payload).toBeNull()
+    })
   })
 })

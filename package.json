@@ -10,6 +10,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "ci-check": "npm run lint && npx tsc --noEmit && npm run test && npm run build",
     "seed:users": "tsx scripts/seed-users.ts",
     "seed:products": "tsx scripts/seed-products.ts",
     "check:db": "tsx scripts/check-db.ts"
@@ -46,19 +47,20 @@
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
     "@types/bcryptjs": "^2.4.6",
-    "@types/node": "22.7.4",
+    "@types/node": "^22.19.17",
     "@types/react": "18.3.11",
     "@types/react-dom": "18.3.1",
-    "@vitejs/plugin-react": "^6.0.1",
+    "@vitejs/plugin-react": "^4.7.0",
     "autoprefixer": "10.4.20",
     "eslint": "9.12.0",
     "eslint-config-next": "15.0.1",
-    "happy-dom": "^20.9.0",
+    "happy-dom": "^15.11.7",
+    "msw": "^2.14.3",
     "postcss": "8.4.47",
     "prisma": "^5.22.0",
     "tailwindcss": "3.4.17",
     "tsx": "^4.21.0",
     "typescript": "5.6.3",
-    "vitest": "^4.1.5"
+    "vitest": "^2.1.9"
   }
 }

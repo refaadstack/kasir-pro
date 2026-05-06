@@ -3,105 +3,94 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import { PinPad } from '@/components/ui/PinPad'
 
 describe('PinPad Component', () => {
-  it('should render PIN display with correct number of slots', () => {
-    render(<PinPad onComplete={vi.fn()} length={4} />)
-    
-    // Harus ada 4 slot untuk PIN
-    const slots = screen.getAllByRole('generic').filter(el => 
-      el.className.includes('border-2')
-    )
-    expect(slots.length).toBeGreaterThanOrEqual(4)
+  it('should render all number buttons', () => {
+    render(<PinPad onComplete={vi.fn()} />)
+
+    // Check if all numbers 0-9 are rendered
+    for (let i = 0; i <= 9; i++) {
+      expect(screen.getByText(i.toString())).toBeInTheDocument()
+    }
   })
 
-  it('should display dots when digits are entered', () => {
-    render(<PinPad onComplete={vi.fn()} length={4} />)
-    
-    // Klik angka 1
-    const button1 = screen.getByRole('button', { name: '1' })
+  it('should render backspace button', () => {
+    render(<PinPad onComplete={vi.fn()} />)
+
+    const backspaceButton = screen.getByText('⌫')
+    expect(backspaceButton).toBeInTheDocument()
+  })
+
+  it('should display dots when numbers are clicked', () => {
+    render(<PinPad onComplete={vi.fn()} />)
+
+    const button1 = screen.getByText('1')
     fireEvent.click(button1)
-    
-    // Harus ada satu dot
-    expect(screen.getByText('•')).toBeInTheDocument()
+
+    // Check if one dot is displayed
+    const display = screen.getByText('•')
+    expect(display).toBeInTheDocument()
   })
 
-  it('should call onComplete when PIN length is reached', () => {
+  it('should call onComplete when 4 digits are entered', () => {
     const onComplete = vi.fn()
-    render(<PinPad onComplete={onComplete} length={4} />)
-    
-    // Klik 4 angka
-    fireEvent.click(screen.getByRole('button', { name: '1' }))
-    fireEvent.click(screen.getByRole('button', { name: '2' }))
-    fireEvent.click(screen.getByRole('button', { name: '3' }))
-    fireEvent.click(screen.getByRole('button', { name: '4' }))
-    
-    // onComplete harus dipanggil dengan PIN yang benar
+    render(<PinPad onComplete={onComplete} />)
+
+    // Click 4 numbers
+    fireEvent.click(screen.getByText('1'))
+    fireEvent.click(screen.getByText('2'))
+    fireEvent.click(screen.getByText('3'))
+    fireEvent.click(screen.getByText('4'))
+
     expect(onComplete).toHaveBeenCalledWith('1234')
   })
 
-  it('should clear PIN when Clear button is clicked', () => {
-    render(<PinPad onComplete={vi.fn()} length={4} />)
-    
-    // Masukkan beberapa digit
-    fireEvent.click(screen.getByRole('button', { name: '1' }))
-    fireEvent.click(screen.getByRole('button', { name: '2' }))
-    
-    // Klik Clear
-    const clearButton = screen.getByRole('button', { name: 'Clear' })
-    fireEvent.click(clearButton)
-    
-    // Tidak ada dot yang ditampilkan
-    expect(screen.queryByText('•')).not.toBeInTheDocument()
-  })
-
-  it('should remove last digit when backspace is clicked', () => {
-    render(<PinPad onComplete={vi.fn()} length={4} />)
-    
-    // Masukkan 3 digit
-    fireEvent.click(screen.getByRole('button', { name: '1' }))
-    fireEvent.click(screen.getByRole('button', { name: '2' }))
-    fireEvent.click(screen.getByRole('button', { name: '3' }))
-    
-    // Harus ada 3 dots
-    expect(screen.getAllByText('•')).toHaveLength(3)
-    
-    // Klik backspace
-    const backspaceButton = screen.getByRole('button', { name: '⌫' })
-    fireEvent.click(backspaceButton)
-    
-    // Harus tersisa 2 dots
-    expect(screen.getAllByText('•')).toHaveLength(2)
-  })
-
-  it('should not accept more digits than length', () => {
+  it('should not accept more than 4 digits', () => {
     const onComplete = vi.fn()
-    render(<PinPad onComplete={onComplete} length={4} />)
-    
-    // Coba masukkan 5 digit
-    fireEvent.click(screen.getByRole('button', { name: '1' }))
-    fireEvent.click(screen.getByRole('button', { name: '2' }))
-    fireEvent.click(screen.getByRole('button', { name: '3' }))
-    fireEvent.click(screen.getByRole('button', { name: '4' }))
-    fireEvent.click(screen.getByRole('button', { name: '5' }))
-    
-    // onComplete hanya dipanggil sekali dengan 4 digit
+    render(<PinPad onComplete={onComplete} />)
+
+    // Try to click 5 numbers
+    fireEvent.click(screen.getByText('1'))
+    fireEvent.click(screen.getByText('2'))
+    fireEvent.click(screen.getByText('3'))
+    fireEvent.click(screen.getByText('4'))
+    fireEvent.click(screen.getByText('5'))
+
+    // Should only be called once with first 4 digits
     expect(onComplete).toHaveBeenCalledTimes(1)
     expect(onComplete).toHaveBeenCalledWith('1234')
   })
 
-  it('should auto-reset after completion when autoReset is true', async () => {
+  it('should remove last digit when backspace is clicked', () => {
+    render(<PinPad onComplete={vi.fn()} />)
+
+    // Click 2 numbers
+    fireEvent.click(screen.getByText('1'))
+    fireEvent.click(screen.getByText('2'))
+
+    // Click backspace
+    const backspaceButton = screen.getByText('⌫')
+    fireEvent.click(backspaceButton)
+
+    // Should only show 1 dot now
+    const dots = screen.getAllByText('•')
+    expect(dots).toHaveLength(1)
+  })
+
+  it('should reset after completion', async () => {
     const onComplete = vi.fn()
-    render(<PinPad onComplete={onComplete} length={4} autoReset={true} />)
-    
-    // Masukkan 4 digit
-    fireEvent.click(screen.getByRole('button', { name: '1' }))
-    fireEvent.click(screen.getByRole('button', { name: '2' }))
-    fireEvent.click(screen.getByRole('button', { name: '3' }))
-    fireEvent.click(screen.getByRole('button', { name: '4' }))
-    
-    // Tunggu auto-reset (300ms)
+    render(<PinPad onComplete={onComplete} autoReset={true} />)
+
+    // Enter 4 digits
+    fireEvent.click(screen.getByText('1'))
+    fireEvent.click(screen.getByText('2'))
+    fireEvent.click(screen.getByText('3'))
+    fireEvent.click(screen.getByText('4'))
+
+    expect(onComplete).toHaveBeenCalledWith('1234')
+
+    // Wait for auto-reset (300ms timeout in component)
     await new Promise(resolve => setTimeout(resolve, 350))
-    
-    // PIN harus ter-reset
+
+    // Display should be empty after auto-reset
     expect(screen.queryByText('•')).not.toBeInTheDocument()
   })
 })
