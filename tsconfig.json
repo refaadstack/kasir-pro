@@ -24,6 +24,9 @@
     "paths": {
       "@/*": [
         "./src/*"
+      ],
+      "@/types/*": [
+        "./types/*"
       ]
     },
     "target": "ES2017"
@@ -33,10 +36,13 @@
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",
+    ".next/types/**/*.tsx",
     ".next/dev/types/**/*.ts",
     "**/*.css",
+    "types/**/*.ts"
   ],
   "exclude": [
     "node_modules"
   ]
 }
+

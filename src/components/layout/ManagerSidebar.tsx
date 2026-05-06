@@ -1,0 +1,68 @@
+'use client'
+
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { 
+  LayoutDashboard, 
+  Receipt, 
+  FileText, 
+  Activity,
+  Users,
+  Settings
+} from 'lucide-react'
+import { cn } from '@/lib/utils'
+
+const navItems = [
+  { label: 'Dashboard', href: '/dashboard/manager', icon: LayoutDashboard },
+  { label: 'Transaksi', href: '/dashboard/manager/transaksi', icon: Receipt },
+  { label: 'Laporan', href: '/dashboard/manager/laporan', icon: FileText },
+  { label: 'Karyawan', href: '/dashboard/manager/karyawan', icon: Users },
+  { label: 'Activity Log', href: '/dashboard/manager/log', icon: Activity },
+  { label: 'Lainnya', href: '/dashboard/manager/more', icon: Settings },
+]
+
+export function ManagerSidebar() {
+  const pathname = usePathname()
+
+  return (
+    <aside className="hidden md:block w-64 bg-[rgba(13,13,20,0.97)] border-r border-white/10 min-h-[calc(100vh-52px)]">
+      <nav className="p-4 space-y-2">
+        {navItems.map((item) => {
+          const Icon = item.icon
+          const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
+
+          return (
+            <Link
+              key={item.href}
+              href={item.href as any}
+              className={cn(
+                'flex items-center gap-3 px-4 py-3 rounded-xl transition-all relative',
+                isActive
+                  ? 'bg-amber-400/10 text-amber-400 font-semibold'
+                  : 'text-white/60 hover:bg-white/5 hover:text-white'
+              )}
+            >
+              {isActive && (
+                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-amber-400 rounded-r-full" />
+              )}
+              <Icon className="w-5 h-5" />
+              <span className="text-sm">{item.label}</span>
+            </Link>
+          )
+        })}
+      </nav>
+
+      {/* Version Info */}
+      <div className="absolute bottom-4 left-4 right-4">
+        <div className="p-3 bg-white/5 rounded-xl border border-white/10">
+          <div className="text-xs text-white/40 text-center">
+            KasirPro v2.0
+          </div>
+          <div className="text-[10px] text-white/20 text-center mt-1">
+            Manager Dashboard
+          </div>
+        </div>
+      </div>
+    </aside>
+  )
+}

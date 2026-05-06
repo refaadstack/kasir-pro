@@ -1,93 +1,77 @@
 'use client'
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
-import { createBrowserClient } from '@supabase/ssr'
+
+import { createContext, useContext, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
-type UserRole = 'SUPERADMIN' | 'MANAGER' | 'KASIR'
-
-interface Profile {
+type User = {
   id: string
-  name: string | null
+  name: string
   email: string
-  role: UserRole
-  isActive: boolean
+  role: 'KASIR' | 'SUPERVISOR' | 'SUPERADMIN'
 }
 
-interface AuthContextType {
-  user: any
-  profile: Profile | null
-  role: UserRole | null
-  loading: boolean
-  signOut: () => Promise<void>
+type AuthContextType = {
+  user: User | null
+  isLoading: boolean
+  logout: () => Promise<void>
+  refreshUser: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<User | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
-  const [user, setUser] = useState<any>(null)
-  const [profile, setProfile] = useState<Profile | null>(null)
-  const [role, setRole] = useState<UserRole | null>(null)
-  const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    // Cek session awal
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null)
-      if (session?.user) fetchProfile(session.user.id)
-      else setLoading(false)
-    })
-
-    // Listen perubahan auth
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null)
-      if (session?.user) fetchProfile(session.user.id)
-      else {
-        setProfile(null)
-        setRole(null)
-        setLoading(false)
-      }
-    })
-
-    return () => subscription.unsubscribe()
-  }, [])
-
-  const fetchProfile = async (userId: string) => {
+  const fetchUser = async () => {
     try {
-      const res = await fetch(`/api/users/${userId}`)
-      const data = await res.json()
-      setProfile(data)
-      setRole(data.role)
-    } catch (e) {
-      console.error('Failed to fetch profile', e)
+      const res = await fetch('/api/auth/me')
+      if (res.ok) {
+        const data = await res.json()
+        setUser(data)
+      } else {
+        setUser(null)
+      }
+    } catch (error) {
+      console.error('Failed to fetch user:', error)
+      setUser(null)
     } finally {
-      setLoading(false)
+      setIsLoading(false)
     }
   }
 
-  const signOut = async () => {
-    await supabase.auth.signOut()
-    setUser(null)
-    setProfile(null)
-    setRole(null)
-    router.push('/login')
+  const logout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' })
+      setUser(null)
+      router.push('/login')
+      router.refresh()
+    } catch (error) {
+      console.error('Logout failed:', error)
+    }
   }
 
+  const refreshUser = async () => {
+    setIsLoading(true)
+    await fetchUser()
+  }
+
+  useEffect(() => {
+    fetchUser()
+  }, [])
+
   return (
-    <AuthContext.Provider value={{ user, profile, role, loading, signOut }}>
+    <AuthContext.Provider value={{ user, isLoading, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   )
 }
 
-export const useAuth = () => {
+export function useAuthContext() {
   const context = useContext(AuthContext)
   if (context === undefined) {
-    throw new Error('useAuth must be used within AuthProvider')
+    throw new Error('useAuthContext must be used within AuthProvider')
   }
   return context
 }
