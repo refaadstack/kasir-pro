@@ -58,12 +58,21 @@ export async function POST(req: NextRequest) {
     }
 
     // Sign JWT token
-    const token = await signToken({
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-    })
+    let token: string
+    try {
+      token = await signToken({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      })
+    } catch (error) {
+      console.error('JWT signing error:', error)
+      return NextResponse.json(
+        { error: 'Gagal membuat token autentikasi. Hubungi administrator.' },
+        { status: 500 }
+      )
+    }
 
     // Tentukan redirect berdasarkan role
     const redirectMap: Record<string, string> = {
@@ -82,6 +91,7 @@ export async function POST(req: NextRequest) {
     // Set cookie HttpOnly
     response.cookies.set(COOKIE_NAME, token, {
       httpOnly: true,
+      secure: process.env.NODE_ENV === 'production', // HTTPS only in production
       sameSite: 'lax',
       maxAge: 60 * 60 * 8, // 8 jam
       path: '/',
