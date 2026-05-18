@@ -215,19 +215,19 @@ export default function ManagerDashboard() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="flex items-end gap-2 h-32">
+          <div className="flex items-end gap-3 h-40 px-2">
             {stats.weeklyChart.percentages.map((height, i) => (
-              <div key={i} className="flex-1 flex flex-col justify-end group">
+              <div key={i} className="flex-1 flex flex-col items-center justify-end group">
                 <div className="text-center mb-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <span className="text-[9px] text-amber-400 font-bold">
-                    {formatCurrency(stats.weeklyChart.data[i]).replace('Rp', '')}
+                  <span className="text-[10px] text-pink-400 font-bold">
+                    {stats.weeklyChart.data[i] > 0 ? formatCurrency(stats.weeklyChart.data[i]).replace('Rp', '') : ''}
                   </span>
                 </div>
                 <div 
-                  className="bg-amber-400/20 hover:bg-amber-400/40 rounded-t transition-all cursor-pointer"
-                  style={{ height: `${height}%` }}
+                  className="w-full bg-pink-500 rounded-md transition-all cursor-pointer hover:bg-pink-400 shadow-lg shadow-pink-500/30"
+                  style={{ height: stats.weeklyChart.data[i] > 0 ? `${Math.max(height, 20)}%` : '4px', opacity: stats.weeklyChart.data[i] > 0 ? 1 : 0.2 }}
                 />
-                <div className="text-[9px] text-white/30 text-center mt-1">
+                <div className="text-[10px] text-white/50 text-center mt-2 font-medium">
                   {stats.weeklyChart.labels[i]}
                 </div>
               </div>

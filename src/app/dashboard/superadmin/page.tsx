@@ -221,19 +221,19 @@ export default function SuperadminDashboard() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="flex items-end gap-2 h-32">
+          <div className="flex items-end gap-3 h-40 px-2">
             {stats.weeklyChart.percentages.map((height, i) => (
-              <div key={i} className="flex-1 flex flex-col justify-end group">
+              <div key={i} className="flex-1 flex flex-col items-center justify-end group">
                 <div className="text-center mb-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <span className="text-[9px] text-pink-400 font-bold">
-                    {formatCurrency(stats.weeklyChart.data[i]).replace('Rp', '')}
+                  <span className="text-[10px] text-pink-400 font-bold">
+                    {stats.weeklyChart.data[i] > 0 ? formatCurrency(stats.weeklyChart.data[i]).replace('Rp', '') : ''}
                   </span>
                 </div>
                 <div 
-                  className="bg-pink-500 hover:bg-pink-400 rounded-t transition-all cursor-pointer shadow-lg shadow-pink-500/20"
-                  style={{ height: `${Math.max(height, 8)}%` }}
+                  className="w-full bg-pink-500 rounded-md transition-all cursor-pointer hover:bg-pink-400 shadow-lg shadow-pink-500/30"
+                  style={{ height: stats.weeklyChart.data[i] > 0 ? `${Math.max(height, 20)}%` : '4px' }}
                 />
-                <div className="text-[10px] text-white/40 text-center mt-2 font-semibold">
+                <div className="text-[10px] text-white/50 text-center mt-2 font-medium">
                   {stats.weeklyChart.labels[i]}
                 </div>
               </div>

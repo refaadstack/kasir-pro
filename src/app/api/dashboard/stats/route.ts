@@ -72,31 +72,37 @@ export async function GET() {
       .gte('created_at', sevenDaysAgo.toISOString())
       .order('created_at', { ascending: true })
 
-    // Group by day - use actual dates for last 7 days
-    const dailySales: number[] = []
+    // Group by day - use UTC dates for consistency
+    const dailySales: number[] = Array(7).fill(0)
     const dailyLabels: string[] = []
     const dayNames = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab']
 
+    // Generate labels for last 7 days
     for (let i = 6; i >= 0; i--) {
       const date = new Date()
-      date.setHours(0, 0, 0, 0)
       date.setDate(date.getDate() - i)
-      
-      const nextDate = new Date(date)
-      nextDate.setDate(nextDate.getDate() + 1)
-
-      const daySales = weekTransactions?.filter(t => {
-        const txDate = new Date(t.created_at)
-        return txDate >= date && txDate < nextDate
-      }).reduce((sum, t) => sum + (t.total_amount || 0), 0) || 0
-
-      dailySales.push(daySales)
-      dailyLabels.push(dayNames[date.getDay()])
+      dailyLabels.push(dayNames[date.getUTCDay()])
     }
+
+    // Group transactions by date string (YYYY-MM-DD)
+    weekTransactions?.forEach(transaction => {
+      const txDate = new Date(transaction.created_at).toISOString().slice(0, 10)
+      
+      for (let i = 6; i >= 0; i--) {
+        const checkDate = new Date()
+        checkDate.setDate(checkDate.getDate() - i)
+        const checkDateStr = checkDate.toISOString().slice(0, 10)
+        
+        if (txDate === checkDateStr) {
+          dailySales[6 - i] += transaction.total_amount || 0
+          break
+        }
+      }
+    })
 
     const maxSales = Math.max(...dailySales, 1)
     const dailyPercentages = dailySales.map(sales => 
-      sales > 0 ? Math.max(Math.round((sales / maxSales) * 100), 10) : 0
+      sales > 0 ? Math.max(Math.round((sales / maxSales) * 100), 15) : 0
     )
 
     // Get yesterday's sales for comparison
