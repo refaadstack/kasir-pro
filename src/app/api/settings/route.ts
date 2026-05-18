@@ -2,6 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { getSession } from '@/lib/auth'
 
+const DEFAULT_SETTINGS = {
+  id: 1,
+  store_name: 'KasirPro',
+  store_address: '',
+  store_phone: '',
+  receipt_footer: 'Terima kasih!',
+}
+
 // GET /api/settings - Get settings
 export async function GET() {
   try {
@@ -9,17 +17,19 @@ export async function GET() {
       .from('settings')
       .select('*')
       .eq('id', 1)
-      .single()
+      .maybeSingle()
 
-    if (error) throw error
+    if (error) {
+      console.error('Settings fetch error:', JSON.stringify(error))
+      // Return defaults if table doesn't exist or other error
+      return NextResponse.json(DEFAULT_SETTINGS)
+    }
 
-    return NextResponse.json(data)
+    return NextResponse.json(data || DEFAULT_SETTINGS)
   } catch (error) {
     console.error('Error fetching settings:', error)
-    return NextResponse.json(
-      { error: 'Gagal memuat pengaturan' },
-      { status: 500 }
-    )
+    // Return defaults on any error
+    return NextResponse.json(DEFAULT_SETTINGS)
   }
 }
 
@@ -32,36 +42,36 @@ export async function PATCH(req: NextRequest) {
     }
 
     const body = await req.json()
-    const { store_name, store_address, store_phone, receipt_footer } = body
 
     const { data, error } = await supabase
       .from('settings')
-      .update({
-        store_name,
-        store_address,
-        store_phone,
-        receipt_footer,
-      })
+      .update(body)
       .eq('id', 1)
       .select()
       .single()
 
-    if (error) throw error
+    if (error) {
+      console.error('Settings update error:', JSON.stringify(error))
+      return NextResponse.json(
+        { error: 'Gagal mengupdate pengaturan', detail: error.message || JSON.stringify(error) },
+        { status: 500 }
+      )
+    }
 
     // Log activity
-    await supabase.from('activity_logs').insert({
+    supabase.from('activity_logs').insert({
       user_id: session.id,
       user_name: session.name,
       action: 'UPDATE_SETTINGS',
       target: 'Settings',
       detail: 'Pengaturan toko diupdate',
-    })
+    }).then(() => {})
 
     return NextResponse.json(data)
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error updating settings:', error)
     return NextResponse.json(
-      { error: error.message || 'Gagal mengupdate pengaturan' },
+      { error: 'Gagal mengupdate pengaturan', detail: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     )
   }

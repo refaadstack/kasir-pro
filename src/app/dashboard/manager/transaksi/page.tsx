@@ -157,9 +157,9 @@ export default function TransaksiPage() {
               Semua
             </button>
             <button
-              onClick={() => setStatusFilter('COMPLETED')}
+              onClick={() => setStatusFilter('SUCCESS')}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
-                statusFilter === 'COMPLETED'
+                statusFilter === 'SUCCESS'
                   ? 'bg-amber-400 text-gray-900'
                   : 'bg-white/5 text-white/60 hover:bg-white/10'
               }`}
@@ -167,9 +167,9 @@ export default function TransaksiPage() {
               Selesai
             </button>
             <button
-              onClick={() => setStatusFilter('VOIDED')}
+              onClick={() => setStatusFilter('VOID')}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
-                statusFilter === 'VOIDED'
+                statusFilter === 'VOID'
                   ? 'bg-amber-400 text-gray-900'
                   : 'bg-white/5 text-white/60 hover:bg-white/10'
               }`}
@@ -214,11 +214,11 @@ export default function TransaksiPage() {
                       <span className="font-bold text-white text-sm mono">{transaction.code}</span>
                       <span className="text-white/40">•</span>
                       <span className={`px-2 py-0.5 rounded text-xs font-semibold ${
-                        transaction.status === 'COMPLETED'
+                        transaction.status === 'SUCCESS'
                           ? 'bg-green-400/20 text-green-400'
                           : 'bg-red-400/20 text-red-400'
                       }`}>
-                        {transaction.status === 'COMPLETED' ? 'Selesai' : 'Dibatalkan'}
+                        {transaction.status === 'SUCCESS' ? 'Selesai' : 'Dibatalkan'}
                       </span>
                     </div>
                     <p className="text-xs text-white/60 mb-2">

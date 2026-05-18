@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
         payment_method: paymentMethod,
         cash_received: amountPaid || total,
         change_amount: change || 0,
-        status: 'completed',
+        status: 'SUCCESS',
       })
       .select()
       .single()

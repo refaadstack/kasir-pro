@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
     const { data: transactions } = await supabase
       .from('transactions')
       .select('total, created_at')
-      .eq('status', 'COMPLETED')
+      .eq('status', 'SUCCESS')
       .gte('created_at', startDate.toISOString())
 
     const totalSales = transactions?.reduce((sum, t) => sum + t.total, 0) || 0
@@ -51,7 +51,7 @@ export async function GET(req: NextRequest) {
         transaction:transactions!inner(status, created_at)
       `)
       .gte('transaction.created_at', startDate.toISOString())
-      .eq('transaction.status', 'COMPLETED')
+      .eq('transaction.status', 'SUCCESS')
 
     // Aggregate products
     const productMap = new Map<string, { sold: number; revenue: number }>()

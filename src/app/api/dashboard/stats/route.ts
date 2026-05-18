@@ -19,7 +19,7 @@ export async function GET() {
     const { data: todayTransactions } = await supabase
       .from('transactions')
       .select('total')
-      .eq('status', 'COMPLETED')
+      .eq('status', 'SUCCESS')
       .gte('created_at', today.toISOString())
       .lt('created_at', tomorrow.toISOString())
 
@@ -64,7 +64,7 @@ export async function GET() {
     const { data: weekTransactions } = await supabase
       .from('transactions')
       .select('total, created_at')
-      .eq('status', 'COMPLETED')
+      .eq('status', 'SUCCESS')
       .gte('created_at', sevenDaysAgo.toISOString())
       .order('created_at', { ascending: true })
 
@@ -91,7 +91,7 @@ export async function GET() {
     const { data: yesterdayTransactions } = await supabase
       .from('transactions')
       .select('total')
-      .eq('status', 'COMPLETED')
+      .eq('status', 'SUCCESS')
       .gte('created_at', yesterday.toISOString())
       .lt('created_at', today.toISOString())
 

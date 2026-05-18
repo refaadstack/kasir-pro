@@ -47,7 +47,7 @@ export async function POST(
       return NextResponse.json({ error: 'Transaksi tidak ditemukan' }, { status: 404 })
     }
 
-    if (transaction.status === 'VOIDED') {
+    if (transaction.status === 'VOID') {
       return NextResponse.json({ error: 'Transaksi sudah dibatalkan' }, { status: 400 })
     }
 
@@ -55,9 +55,10 @@ export async function POST(
     const { data: voidedTx, error: voidError } = await supabase
       .from('transactions')
       .update({
-        status: 'VOIDED',
+        status: 'VOID',
         void_reason: validated.reason,
-        voided_by: session.id,
+        void_by: session.id,
+        void_at: new Date().toISOString(),
       })
       .eq('id', id)
       .select()

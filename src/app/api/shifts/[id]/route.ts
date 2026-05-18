@@ -47,7 +47,7 @@ export async function PATCH(
       .from('transactions')
       .select('total, payment_method')
       .eq('shift_id', id)
-      .eq('status', 'COMPLETED')
+      .eq('status', 'SUCCESS')
 
     const totalSales = transactions?.reduce((sum, t) => sum + t.total, 0) || 0
     const totalTransactions = transactions?.length || 0

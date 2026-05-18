@@ -206,11 +206,11 @@ export default function RiwayatPage() {
                           <span className="font-bold text-white text-sm mono">{transaction.code}</span>
                           <span className="text-white/40">•</span>
                           <span className={`px-2 py-0.5 rounded text-xs font-semibold ${
-                            transaction.status === 'COMPLETED'
+                            transaction.status === 'SUCCESS'
                               ? 'bg-green-400/20 text-green-400'
                               : 'bg-red-400/20 text-red-400'
                           }`}>
-                            {transaction.status === 'COMPLETED' ? 'Selesai' : 'Dibatalkan'}
+                            {transaction.status === 'SUCCESS' ? 'Selesai' : 'Dibatalkan'}
                           </span>
                         </div>
                         <p className="text-xs text-white/60 mb-2">

@@ -161,9 +161,9 @@ export default function TransaksiPage() {
               Semua
             </button>
             <button
-              onClick={() => setStatusFilter('COMPLETED')}
+              onClick={() => setStatusFilter('SUCCESS')}
               className={`px-4 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
-                statusFilter === 'COMPLETED'
+                statusFilter === 'SUCCESS'
                   ? 'bg-amber-400 text-gray-900'
                   : 'bg-white/5 text-white/60 hover:bg-white/10'
               }`}
@@ -171,9 +171,9 @@ export default function TransaksiPage() {
               Selesai
             </button>
             <button
-              onClick={() => setStatusFilter('VOIDED')}
+              onClick={() => setStatusFilter('VOID')}
               className={`px-4 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
-                statusFilter === 'VOIDED'
+                statusFilter === 'VOID'
                   ? 'bg-amber-400 text-gray-900'
                   : 'bg-white/5 text-white/60 hover:bg-white/10'
               }`}
@@ -216,8 +216,8 @@ export default function TransaksiPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <h3 className="font-bold text-white text-sm mono">{transaction.code}</h3>
-                      <StatusBadge status={transaction.status === 'COMPLETED' ? 'success' : 'error'}>
-                        {transaction.status === 'COMPLETED' ? 'Selesai' : 'Dibatalkan'}
+                      <StatusBadge status={transaction.status === 'SUCCESS' ? 'success' : 'error'}>
+                        {transaction.status === 'SUCCESS' ? 'Selesai' : 'Dibatalkan'}
                       </StatusBadge>
                     </div>
                     <div className="flex items-center gap-3 text-xs text-white/40">
