@@ -86,7 +86,7 @@ export async function PATCH(
     }
 
     // Log activity
-    supabase.from('activity_logs').insert({
+    supabase.from('audit_logs').insert({
       user_id: session.id,
       user_name: session.name,
       action: 'CLOSE_DRAWER',

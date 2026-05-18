@@ -14,7 +14,7 @@ const DEFAULT_SETTINGS = {
 export async function GET() {
   try {
     const { data, error } = await supabase
-      .from('settings')
+      .from('store_settings')
       .select('*')
       .eq('id', 1)
       .maybeSingle()
@@ -44,7 +44,7 @@ export async function PATCH(req: NextRequest) {
     const body = await req.json()
 
     const { data, error } = await supabase
-      .from('settings')
+      .from('store_settings')
       .update(body)
       .eq('id', 1)
       .select()
@@ -59,7 +59,7 @@ export async function PATCH(req: NextRequest) {
     }
 
     // Log activity
-    supabase.from('activity_logs').insert({
+    supabase.from('audit_logs').insert({
       user_id: session.id,
       user_name: session.name,
       action: 'UPDATE_SETTINGS',

@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
     // Ping database with a simple query
     const startTime = Date.now()
     const { data, error } = await supabase
-      .from('settings')
+      .from('store_settings')
       .select('id, store_name')
       .eq('id', 1)
       .single()
@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Log the ping (fire and forget)
-    supabase.from('activity_logs').insert({
+    supabase.from('audit_logs').insert({
       user_id: null,
       user_name: 'SYSTEM',
       action: 'DB_PING',

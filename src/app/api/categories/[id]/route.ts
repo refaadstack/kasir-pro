@@ -30,7 +30,7 @@ export async function PATCH(
     if (error) throw error
 
     // Log activity
-    await supabase.from('activity_logs').insert({
+    await supabase.from('audit_logs').insert({
       user_id: session.id,
       user_name: session.name,
       action: 'UPDATE_CATEGORY',
@@ -75,7 +75,7 @@ export async function DELETE(
 
     // Log activity
     if (category) {
-      await supabase.from('activity_logs').insert({
+      await supabase.from('audit_logs').insert({
         user_id: session.id,
         user_name: session.name,
         action: 'DELETE_CATEGORY',

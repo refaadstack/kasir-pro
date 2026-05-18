@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
     if (error) throw error
 
     // Log activity
-    await supabase.from('activity_logs').insert({
+    await supabase.from('audit_logs').insert({
       user_id: session.id,
       user_name: session.name,
       action: 'CREATE_CATEGORY',

@@ -105,7 +105,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 4. Log activity (fire and forget)
-    supabase.from('activity_logs').insert({
+    supabase.from('audit_logs').insert({
       user_id: session.id,
       user_name: session.name,
       action: 'CREATE_TRANSACTION',

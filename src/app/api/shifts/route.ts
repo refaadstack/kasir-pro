@@ -106,7 +106,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Log activity
-    supabase.from('activity_logs').insert({
+    supabase.from('audit_logs').insert({
       user_id: session.id,
       user_name: session.name,
       action: 'OPEN_DRAWER',

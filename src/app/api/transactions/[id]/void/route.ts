@@ -75,7 +75,7 @@ export async function POST(
     }
 
     // Log activity
-    await supabase.from('activity_logs').insert({
+    await supabase.from('audit_logs').insert({
       user_id: session.id,
       user_name: session.name,
       action: 'VOID_TRANSACTION',

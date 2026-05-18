@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '100')
 
     const { data: logs, error } = await supabase
-      .from('activity_logs')
+      .from('audit_logs')
       .select('*')
       .order('created_at', { ascending: false })
       .limit(limit)
