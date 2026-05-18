@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 
 type ReportStats = {
   totalSales: number
@@ -189,28 +190,17 @@ export default function LaporanPage() {
           {stats.topProducts.length === 0 ? (
             <p className="text-white/40 text-sm text-center py-8">Belum ada data penjualan</p>
           ) : (
-            <div className="flex items-end gap-3 h-44 px-2 pt-4">
-              {stats.topProducts.slice(0, 7).map((product, i) => {
-                const maxRevenue = Math.max(...stats.topProducts.slice(0, 7).map(p => p.revenue), 1)
-                const heightPercent = Math.max((product.revenue / maxRevenue) * 100, 12)
-                return (
-                  <div key={i} className="flex-1 flex flex-col items-center justify-end group relative">
-                    <div className="text-center mb-1 opacity-0 group-hover:opacity-100 transition-opacity absolute -top-1">
-                      <span className="text-[10px] text-pink-400 font-bold bg-[#16161f] px-1 rounded">
-                        {formatCurrency(product.revenue).replace('Rp', '')}
-                      </span>
-                    </div>
-                    <div 
-                      className="w-full bg-pink-500 hover:bg-pink-400 rounded-md transition-all cursor-pointer shadow-lg shadow-pink-500/30"
-                      style={{ height: `${heightPercent}%` }}
-                    />
-                    <div className="text-[9px] text-white/50 text-center mt-2 font-medium truncate w-full px-1">
-                      {product.name.length > 6 ? product.name.slice(0, 6) + '..' : product.name}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={stats.topProducts.slice(0, 7).map(p => ({ name: p.name.length > 8 ? p.name.slice(0, 8) + '..' : p.name, revenue: p.revenue }))}>
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#ffffff60', fontSize: 10 }} />
+                <YAxis hide />
+                <Tooltip 
+                  contentStyle={{ background: '#1a1a2e', border: '1px solid #ffffff20', borderRadius: 8 }}
+                  labelStyle={{ color: '#fff' }}
+                />
+                <Bar dataKey="revenue" fill="#ec4899" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
           )}
         </CardContent>
       </Card>

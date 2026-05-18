@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 
 type DashboardStats = {
   todaySales: number
@@ -215,34 +216,17 @@ export default function ManagerDashboard() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="flex items-end gap-3 h-44 px-2 pt-4">
-            {stats.weeklyChart.data.map((value, i) => {
-              const maxVal = Math.max(...stats.weeklyChart.data, 1)
-              const heightPercent = value > 0 ? Math.max((value / maxVal) * 100, 12) : 3
-              return (
-                <div key={i} className="flex-1 flex flex-col items-center justify-end group relative">
-                  {value > 0 && (
-                    <div className="text-center mb-1 opacity-0 group-hover:opacity-100 transition-opacity absolute -top-1">
-                      <span className="text-[10px] text-pink-400 font-bold bg-[#16161f] px-1 rounded">
-                        {formatCurrency(value).replace('Rp', '')}
-                      </span>
-                    </div>
-                  )}
-                  <div 
-                    className={`w-full rounded-md transition-all cursor-pointer ${
-                      value > 0 
-                        ? 'bg-pink-500 hover:bg-pink-400 shadow-lg shadow-pink-500/30' 
-                        : 'bg-white/10'
-                    }`}
-                    style={{ height: `${heightPercent}%` }}
-                  />
-                  <div className="text-[10px] text-white/50 text-center mt-2 font-medium">
-                    {stats.weeklyChart.labels[i]}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
+          <ResponsiveContainer width="100%" height={180}>
+            <BarChart data={stats.weeklyChart.labels.map((label, i) => ({ name: label, sales: stats.weeklyChart.data[i] }))}>
+              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#ffffff60', fontSize: 11 }} />
+              <YAxis hide />
+              <Tooltip 
+                contentStyle={{ background: '#1a1a2e', border: '1px solid #ffffff20', borderRadius: 8 }}
+                labelStyle={{ color: '#fff' }}
+              />
+              <Bar dataKey="sales" fill="#ec4899" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
         </CardContent>
       </Card>
 
