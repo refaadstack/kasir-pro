@@ -12,30 +12,35 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url)
     const limit = parseInt(searchParams.get('limit') || '100')
 
+    // Fetch logs
     const { data: logs, error } = await supabase
       .from('audit_logs')
-      .select('*, user:users!user_id(name)')
+      .select('*')
       .order('created_at', { ascending: false })
       .limit(limit)
 
     if (error) {
-      // Fallback tanpa join jika gagal
-      const { data: logsSimple, error: errSimple } = await supabase
-        .from('audit_logs')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(limit)
-
-      if (errSimple) {
-        return NextResponse.json(
-          { error: 'Failed to fetch logs', detail: errSimple.message || JSON.stringify(errSimple) },
-          { status: 500 }
-        )
-      }
-      return NextResponse.json(logsSimple || [])
+      return NextResponse.json(
+        { error: 'Failed to fetch logs', detail: error.message },
+        { status: 500 }
+      )
     }
 
-    return NextResponse.json(logs || [])
+    // Fetch users to map names
+    const { data: users } = await supabase
+      .from('users')
+      .select('id, name')
+
+    const userMap = new Map<string, string>()
+    users?.forEach(u => userMap.set(u.id, u.name))
+
+    // Attach user name to each log
+    const logsWithUser = (logs || []).map(log => ({
+      ...log,
+      user: { name: userMap.get(log.user_id) || 'System' },
+    }))
+
+    return NextResponse.json(logsWithUser)
   } catch (error) {
     console.error('Error fetching logs:', error)
     return NextResponse.json(
