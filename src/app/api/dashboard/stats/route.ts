@@ -72,20 +72,32 @@ export async function GET() {
       .gte('created_at', sevenDaysAgo.toISOString())
       .order('created_at', { ascending: true })
 
-    // Group by day
-    const dailySales = Array(7).fill(0)
-    const dailyLabels = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min']
+    // Group by day - use actual dates for last 7 days
+    const dailySales: number[] = []
+    const dailyLabels: string[] = []
+    const dayNames = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab']
 
-    weekTransactions?.forEach(transaction => {
-      const date = new Date(transaction.created_at)
-      const daysDiff = Math.floor((today.getTime() - date.getTime()) / (1000 * 60 * 60 * 24))
-      if (daysDiff >= 0 && daysDiff < 7) {
-        dailySales[6 - daysDiff] += transaction.total_amount || 0
-      }
-    })
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date()
+      date.setHours(0, 0, 0, 0)
+      date.setDate(date.getDate() - i)
+      
+      const nextDate = new Date(date)
+      nextDate.setDate(nextDate.getDate() + 1)
+
+      const daySales = weekTransactions?.filter(t => {
+        const txDate = new Date(t.created_at)
+        return txDate >= date && txDate < nextDate
+      }).reduce((sum, t) => sum + (t.total_amount || 0), 0) || 0
+
+      dailySales.push(daySales)
+      dailyLabels.push(dayNames[date.getDay()])
+    }
 
     const maxSales = Math.max(...dailySales, 1)
-    const dailyPercentages = dailySales.map(sales => Math.round((sales / maxSales) * 100))
+    const dailyPercentages = dailySales.map(sales => 
+      sales > 0 ? Math.max(Math.round((sales / maxSales) * 100), 10) : 0
+    )
 
     // Get yesterday's sales for comparison
     const yesterday = new Date(today)
