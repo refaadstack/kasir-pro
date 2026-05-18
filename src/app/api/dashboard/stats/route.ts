@@ -15,15 +15,19 @@ export async function GET() {
     const tomorrow = new Date(today)
     tomorrow.setDate(tomorrow.getDate() + 1)
 
-    // Get today's sales total
-    const { data: todayTransactions } = await supabase
+    // Get today's sales
+    const { data: todayTransactions, error: todayError } = await supabase
       .from('transactions')
-      .select('total')
+      .select('total_amount')
       .eq('status', 'SUCCESS')
       .gte('created_at', today.toISOString())
       .lt('created_at', tomorrow.toISOString())
 
-    const todaySales = todayTransactions?.reduce((sum, t) => sum + t.total, 0) || 0
+    if (todayError) {
+      console.error('Today transactions error:', JSON.stringify(todayError))
+    }
+
+    const todaySales = todayTransactions?.reduce((sum, t) => sum + (t.total_amount || 0), 0) || 0
     const todayTransactionsCount = todayTransactions?.length || 0
 
     // Get active products count
@@ -45,7 +49,7 @@ export async function GET() {
       .select('*', { count: 'exact', head: true })
       .eq('stock', 0)
 
-    // Get active shifts count (shifts without end_time)
+    // Get active shifts count
     const { count: activeShiftsCount } = await supabase
       .from('shifts')
       .select('*', { count: 'exact', head: true })
@@ -63,7 +67,7 @@ export async function GET() {
 
     const { data: weekTransactions } = await supabase
       .from('transactions')
-      .select('total, created_at')
+      .select('total_amount, created_at')
       .eq('status', 'SUCCESS')
       .gte('created_at', sevenDaysAgo.toISOString())
       .order('created_at', { ascending: true })
@@ -71,16 +75,15 @@ export async function GET() {
     // Group by day
     const dailySales = Array(7).fill(0)
     const dailyLabels = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min']
-    
+
     weekTransactions?.forEach(transaction => {
       const date = new Date(transaction.created_at)
       const daysDiff = Math.floor((today.getTime() - date.getTime()) / (1000 * 60 * 60 * 24))
       if (daysDiff >= 0 && daysDiff < 7) {
-        dailySales[6 - daysDiff] += transaction.total
+        dailySales[6 - daysDiff] += transaction.total_amount || 0
       }
     })
 
-    // Calculate percentage for each day (relative to max)
     const maxSales = Math.max(...dailySales, 1)
     const dailyPercentages = dailySales.map(sales => Math.round((sales / maxSales) * 100))
 
@@ -90,13 +93,13 @@ export async function GET() {
 
     const { data: yesterdayTransactions } = await supabase
       .from('transactions')
-      .select('total')
+      .select('total_amount')
       .eq('status', 'SUCCESS')
       .gte('created_at', yesterday.toISOString())
       .lt('created_at', today.toISOString())
 
-    const yesterdaySales = yesterdayTransactions?.reduce((sum, t) => sum + t.total, 0) || 0
-    const salesGrowth = yesterdaySales > 0 
+    const yesterdaySales = yesterdayTransactions?.reduce((sum, t) => sum + (t.total_amount || 0), 0) || 0
+    const salesGrowth = yesterdaySales > 0
       ? Math.round(((todaySales - yesterdaySales) / yesterdaySales) * 100)
       : 0
 
@@ -118,7 +121,7 @@ export async function GET() {
   } catch (error) {
     console.error('Error fetching dashboard stats:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch dashboard stats' },
+      { error: 'Failed to fetch dashboard stats', detail: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     )
   }

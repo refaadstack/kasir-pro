@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
 
     // Calculate date range based on period
     const now = new Date()
-    let startDate = new Date()
+    const startDate = new Date()
 
     switch (period) {
       case 'today':
@@ -31,36 +31,42 @@ export async function GET(req: NextRequest) {
     }
 
     // Get transactions for the period
-    const { data: transactions } = await supabase
+    const { data: transactions, error: txError } = await supabase
       .from('transactions')
-      .select('total, created_at')
+      .select('total_amount, created_at')
       .eq('status', 'SUCCESS')
       .gte('created_at', startDate.toISOString())
 
-    const totalSales = transactions?.reduce((sum, t) => sum + t.total, 0) || 0
+    if (txError) {
+      console.error('Reports transactions error:', JSON.stringify(txError))
+    }
+
+    const totalSales = transactions?.reduce((sum, t) => sum + (t.total_amount || 0), 0) || 0
     const totalTransactions = transactions?.length || 0
     const avgTransaction = totalTransactions > 0 ? Math.round(totalSales / totalTransactions) : 0
 
-    // Get top products
+    // Get top products - simple query without join
     const { data: transactionItems } = await supabase
       .from('transaction_items')
-      .select(`
-        product_name,
-        qty,
-        subtotal,
-        transaction:transactions!inner(status, created_at)
-      `)
-      .gte('transaction.created_at', startDate.toISOString())
-      .eq('transaction.status', 'SUCCESS')
+      .select('product_id, qty, price_at_sale, subtotal')
+
+    // Get product names
+    const { data: products } = await supabase
+      .from('products')
+      .select('id, name')
+
+    const productNameMap = new Map<string, string>()
+    products?.forEach(p => productNameMap.set(p.id, p.name))
 
     // Aggregate products
     const productMap = new Map<string, { sold: number; revenue: number }>()
-    
-    transactionItems?.forEach((item: any) => {
-      const existing = productMap.get(item.product_name) || { sold: 0, revenue: 0 }
-      productMap.set(item.product_name, {
+
+    transactionItems?.forEach((item) => {
+      const name = productNameMap.get(item.product_id) || 'Unknown'
+      const existing = productMap.get(name) || { sold: 0, revenue: 0 }
+      productMap.set(name, {
         sold: existing.sold + item.qty,
-        revenue: existing.revenue + item.subtotal,
+        revenue: existing.revenue + (item.subtotal || item.price_at_sale * item.qty),
       })
     })
 
@@ -83,7 +89,7 @@ export async function GET(req: NextRequest) {
   } catch (error) {
     console.error('Error fetching reports:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch reports' },
+      { error: 'Failed to fetch reports', detail: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     )
   }
