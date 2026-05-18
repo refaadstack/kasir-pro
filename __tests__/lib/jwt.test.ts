@@ -40,7 +40,7 @@ describe('JWT Functions', () => {
         id: '456',
         name: 'User 2',
         email: 'user2@example.com',
-        role: 'SUPERVISOR',
+        role: 'SUPERADMIN',
       })
 
       expect(token1).not.toBe(token2)
