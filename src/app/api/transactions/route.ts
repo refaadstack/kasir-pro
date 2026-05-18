@@ -68,8 +68,7 @@ export async function POST(req: NextRequest) {
     const transactionItems = items.map((item: { productId: string; productName: string; price: number; qty: number; subtotal: number }) => ({
       transaction_id: transaction.id,
       product_id: item.productId,
-      product_name: item.productName,
-      price: item.price,
+      price_at_sale: item.price,
       qty: item.qty,
       subtotal: item.subtotal,
     }))
