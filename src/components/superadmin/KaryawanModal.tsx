@@ -10,7 +10,7 @@ type User = {
   id: string
   name: string
   email: string
-  role: 'KASIR' | 'SUPERVISOR' | 'SUPERADMIN' | 'MANAGER'
+  role: 'KASIR' | 'MANAGER' | 'SUPERADMIN'
   isActive: boolean
   phone?: string
 }
@@ -27,7 +27,7 @@ export function KaryawanModal({ isOpen, onClose, onSuccess, user }: KaryawanModa
     name: string
     email: string
     pin: string
-    role: 'KASIR' | 'SUPERVISOR' | 'MANAGER' | 'SUPERADMIN'
+    role: 'KASIR' | 'MANAGER' | 'SUPERADMIN'
     phone: string
     isActive: boolean
   }>({
@@ -186,7 +186,6 @@ export function KaryawanModal({ isOpen, onClose, onSuccess, user }: KaryawanModa
               required
             >
               <option value="KASIR">Kasir</option>
-              <option value="SUPERVISOR">Supervisor</option>
               <option value="MANAGER">Manager</option>
               <option value="SUPERADMIN">Superadmin</option>
             </select>

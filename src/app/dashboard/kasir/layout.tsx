@@ -11,19 +11,19 @@ export default async function KasirLayout({
 }) {
   const session = await getSession()
 
-  if (!session || !['KASIR', 'SUPERVISOR', 'MANAGER', 'SUPERADMIN'].includes(session.role)) {
+  if (!session || !['KASIR', 'MANAGER', 'SUPERADMIN'].includes(session.role)) {
     redirect('/unauthorized')
   }
 
   return (
     <div className="min-h-screen bg-app flex flex-col">
       <Navbar />
-      <div className="flex flex-1">
+      <div className="flex flex-1 overflow-hidden">
         {/* Sidebar for desktop */}
         <KasirSidebar />
         
-        {/* Main content */}
-        <main className="flex-1 pb-24 md:pb-8">
+        {/* Main content - scrollable */}
+        <main className="flex-1 overflow-y-auto pb-32 md:pb-8">
           {children}
         </main>
       </div>

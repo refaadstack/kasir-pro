@@ -11,7 +11,7 @@ export type JWTPayload = {
   id: string
   name: string
   email: string
-  role: 'KASIR' | 'SUPERVISOR' | 'SUPERADMIN' | 'MANAGER'
+  role: 'KASIR' | 'MANAGER' | 'SUPERADMIN'
 }
 
 export async function signToken(payload: JWTPayload): Promise<string> {

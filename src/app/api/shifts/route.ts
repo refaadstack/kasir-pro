@@ -47,17 +47,19 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST - Start a new shift
+// POST - Start a new shift with opening cash drawer
 export async function POST(req: NextRequest) {
   try {
     const session = await getSession()
-    if (!session || !['KASIR', 'SUPERVISOR', 'MANAGER', 'SUPERADMIN'].includes(session.role)) {
+    if (!session || !['KASIR', 'MANAGER', 'SUPERADMIN'].includes(session.role)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
     }
 
     const body = await req.json()
     const schema = z.object({
       kasir_id: z.string().uuid(),
+      opening_cash: z.number().min(0, 'Modal kas tidak boleh negatif').default(0),
+      opening_notes: z.string().optional(),
     })
 
     const validated = schema.parse(body)
@@ -77,7 +79,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Create new shift
+    // Create new shift with opening cash
     const { data: shift, error } = await supabase
       .from('shifts')
       .insert({
@@ -85,6 +87,8 @@ export async function POST(req: NextRequest) {
         started_at: new Date().toISOString(),
         total_sales: 0,
         total_transactions: 0,
+        opening_cash: validated.opening_cash,
+        opening_notes: validated.opening_notes || null,
       })
       .select(`
         *,
@@ -95,12 +99,19 @@ export async function POST(req: NextRequest) {
     if (error) throw error
 
     // Log activity
+    const formatCurrency = (amount: number) =>
+      new Intl.NumberFormat('id-ID', {
+        style: 'currency',
+        currency: 'IDR',
+        minimumFractionDigits: 0,
+      }).format(amount)
+
     await supabase.from('activity_logs').insert({
       user_id: session.id,
       user_name: session.name,
-      action: 'START_SHIFT',
+      action: 'OPEN_DRAWER',
       target: shift.kasir.name,
-      detail: `Shift dimulai`,
+      detail: `Buka shift dengan modal kas ${formatCurrency(validated.opening_cash)}`,
     })
 
     return NextResponse.json(shift, { status: 201 })

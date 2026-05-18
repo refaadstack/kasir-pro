@@ -73,8 +73,6 @@ export default function KaryawanPage() {
         return 'bg-red-400/20 text-red-400'
       case 'MANAGER':
         return 'bg-purple-400/20 text-purple-400'
-      case 'SUPERVISOR':
-        return 'bg-blue-400/20 text-blue-400'
       case 'KASIR':
         return 'bg-green-400/20 text-green-400'
       default:
@@ -142,7 +140,7 @@ export default function KaryawanPage() {
             >
               Semua
             </button>
-            {['KASIR', 'SUPERVISOR', 'MANAGER', 'SUPERADMIN'].map((role) => (
+            {['KASIR', 'MANAGER', 'SUPERADMIN'].map((role) => (
               <button
                 key={role}
                 onClick={() => setRoleFilter(role)}

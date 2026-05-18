@@ -10,7 +10,7 @@ export async function POST(
 ) {
   try {
     const session = await getSession()
-    if (!session || !['SUPERVISOR', 'SUPERADMIN'].includes(session.role)) {
+    if (!session || !['MANAGER', 'SUPERADMIN'].includes(session.role)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
     }
 

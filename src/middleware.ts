@@ -3,8 +3,7 @@ import type { NextRequest } from 'next/server'
 import { verifyToken } from '@/lib/jwt'
 
 const ROLE_ROUTES: Record<string, string[]> = {
-  '/dashboard/kasir':      ['KASIR', 'SUPERVISOR', 'MANAGER', 'SUPERADMIN'],
-  '/dashboard/supervisor': ['SUPERVISOR', 'SUPERADMIN'],
+  '/dashboard/kasir':      ['KASIR', 'MANAGER', 'SUPERADMIN'],
   '/dashboard/manager':    ['MANAGER', 'SUPERADMIN'],
   '/dashboard/superadmin': ['SUPERADMIN'],
 }
@@ -12,7 +11,6 @@ const ROLE_ROUTES: Record<string, string[]> = {
 function roleToDashboard(role: string) {
   if (role === 'SUPERADMIN') return '/dashboard/superadmin'
   if (role === 'MANAGER') return '/dashboard/manager'
-  if (role === 'SUPERVISOR') return '/dashboard/supervisor'
   return '/dashboard/kasir'
 }
 

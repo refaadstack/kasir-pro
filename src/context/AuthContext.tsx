@@ -7,7 +7,7 @@ type User = {
   id: string
   name: string
   email: string
-  role: 'KASIR' | 'SUPERVISOR' | 'SUPERADMIN'
+  role: 'KASIR' | 'MANAGER' | 'SUPERADMIN'
 }
 
 type AuthContextType = {

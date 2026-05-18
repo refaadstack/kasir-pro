@@ -16,7 +16,7 @@ type User = {
   id: string
   name: string
   email: string
-  role: 'KASIR' | 'SUPERVISOR' | 'SUPERADMIN' | 'MANAGER'
+  role: 'KASIR' | 'MANAGER' | 'SUPERADMIN'
   isActive: boolean
   phone?: string
 }

@@ -9,9 +9,8 @@ export default async function LoginPage() {
   if (session) {
     const redirectMap: Record<string, string> = {
       KASIR: '/dashboard/kasir',
-      SUPERVISOR: '/dashboard/supervisor',
+      MANAGER: '/dashboard/manager',
       SUPERADMIN: '/dashboard/superadmin',
-      MANAGER: '/dashboard/supervisor',
     }
     redirect(redirectMap[session.role] || '/dashboard/kasir')
   }

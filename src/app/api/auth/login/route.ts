@@ -77,7 +77,6 @@ export async function POST(req: NextRequest) {
     // Tentukan redirect berdasarkan role
     const redirectMap: Record<string, string> = {
       KASIR: '/dashboard/kasir',
-      SUPERVISOR: '/dashboard/supervisor',
       MANAGER: '/dashboard/manager',
       SUPERADMIN: '/dashboard/superadmin',
     }

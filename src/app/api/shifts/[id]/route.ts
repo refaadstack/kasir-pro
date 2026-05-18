@@ -1,19 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { getSession } from '@/lib/auth'
+import { z } from 'zod'
 
-// PATCH - End a shift
+// PATCH - End a shift with closing cash drawer
 export async function PATCH(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
     const session = await getSession()
-    if (!session || !['KASIR', 'SUPERVISOR', 'MANAGER', 'SUPERADMIN'].includes(session.role)) {
+    if (!session || !['KASIR', 'MANAGER', 'SUPERADMIN'].includes(session.role)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
     }
 
     const { id } = params
+    const body = await req.json().catch(() => ({}))
+
+    const schema = z.object({
+      closing_cash: z.number().min(0, 'Kas akhir tidak boleh negatif').default(0),
+      closing_notes: z.string().optional(),
+    })
+
+    const validated = schema.parse(body)
 
     // Get shift data
     const { data: shift, error: shiftError } = await supabase
@@ -39,12 +48,23 @@ export async function PATCH(
     // Calculate total sales and transactions for this shift
     const { data: transactions } = await supabase
       .from('transactions')
-      .select('total')
+      .select('total, payment_method')
       .eq('shift_id', id)
       .eq('status', 'COMPLETED')
 
     const totalSales = transactions?.reduce((sum, t) => sum + t.total, 0) || 0
     const totalTransactions = transactions?.length || 0
+
+    // Calculate cash sales only (TUNAI)
+    const cashSales = transactions
+      ?.filter(t => t.payment_method === 'TUNAI')
+      .reduce((sum, t) => sum + t.total, 0) || 0
+
+    // Expected cash = opening cash + cash sales
+    const expectedCash = (shift.opening_cash || 0) + cashSales
+
+    // Cash difference = actual closing cash - expected cash
+    const cashDifference = validated.closing_cash - expectedCash
 
     // End the shift
     const { data: updatedShift, error: updateError } = await supabase
@@ -53,6 +73,10 @@ export async function PATCH(
         ended_at: new Date().toISOString(),
         total_sales: totalSales,
         total_transactions: totalTransactions,
+        closing_cash: validated.closing_cash,
+        expected_cash: expectedCash,
+        cash_difference: cashDifference,
+        closing_notes: validated.closing_notes || null,
       })
       .eq('id', id)
       .select(`
@@ -64,20 +88,36 @@ export async function PATCH(
     if (updateError) throw updateError
 
     // Log activity
-    await supabase.from('activity_logs').insert({
-      user_id: session.id,
-      user_name: session.name,
-      action: 'END_SHIFT',
-      target: shift.kasir.name,
-      detail: `Shift ditutup - ${totalTransactions} transaksi, ${new Intl.NumberFormat('id-ID', {
+    const formatCurrency = (amount: number) =>
+      new Intl.NumberFormat('id-ID', {
         style: 'currency',
         currency: 'IDR',
         minimumFractionDigits: 0,
-      }).format(totalSales)}`,
+      }).format(amount)
+
+    const diffLabel =
+      cashDifference > 0
+        ? `surplus ${formatCurrency(cashDifference)}`
+        : cashDifference < 0
+          ? `kurang ${formatCurrency(Math.abs(cashDifference))}`
+          : 'sesuai'
+
+    await supabase.from('activity_logs').insert({
+      user_id: session.id,
+      user_name: session.name,
+      action: 'CLOSE_DRAWER',
+      target: shift.kasir.name,
+      detail: `Tutup shift - ${totalTransactions} transaksi, penjualan ${formatCurrency(totalSales)}, kas ${diffLabel}`,
     })
 
     return NextResponse.json(updatedShift)
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: 'Invalid input', details: error.issues },
+        { status: 400 }
+      )
+    }
     console.error('Error ending shift:', error)
     return NextResponse.json(
       { error: 'Failed to end shift' },

@@ -1,10 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Clock, Play, Square, DollarSign, ShoppingCart, Timer } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Clock, DollarSign, ShoppingCart, Timer, Wallet, TrendingUp, TrendingDown } from 'lucide-react'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
+import { OpenDrawerModal } from '@/components/kasir/OpenDrawerModal'
+import { CloseDrawerModal } from '@/components/kasir/CloseDrawerModal'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/use-toast'
 
@@ -15,6 +17,12 @@ type Shift = {
   ended_at: string | null
   total_sales: number
   total_transactions: number
+  opening_cash: number
+  closing_cash: number
+  expected_cash: number
+  cash_difference: number
+  opening_notes: string | null
+  closing_notes: string | null
   kasir: {
     id: string
     name: string
@@ -30,6 +38,9 @@ export default function ShiftPage() {
   const [isStarting, setIsStarting] = useState(false)
   const [isEnding, setIsEnding] = useState(false)
   const [duration, setDuration] = useState('')
+  const [showOpenDrawer, setShowOpenDrawer] = useState(false)
+  const [showCloseDrawer, setShowCloseDrawer] = useState(false)
+  const [cashSales, setCashSales] = useState(0)
 
   useEffect(() => {
     if (user) {
@@ -44,12 +55,14 @@ export default function ShiftPage() {
         const start = new Date(activeShift.started_at)
         const now = new Date()
         const diff = now.getTime() - start.getTime()
-        
+
         const hours = Math.floor(diff / (1000 * 60 * 60))
         const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
         const seconds = Math.floor((diff % (1000 * 60)) / 1000)
-        
-        setDuration(`${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`)
+
+        setDuration(
+          `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+        )
       }, 1000)
 
       return () => clearInterval(interval)
@@ -62,7 +75,13 @@ export default function ShiftPage() {
       const res = await fetch(`/api/shifts?active=true&kasir_id=${user?.id}`)
       if (res.ok) {
         const data = await res.json()
-        setActiveShift(data[0] || null)
+        const shift = data[0] || null
+        setActiveShift(shift)
+
+        // Fetch cash sales for this shift
+        if (shift) {
+          fetchCashSales(shift.id)
+        }
       }
     } catch (error) {
       console.error('Error fetching active shift:', error)
@@ -71,7 +90,20 @@ export default function ShiftPage() {
     }
   }
 
-  const handleStartShift = async () => {
+  const fetchCashSales = async (shiftId: string) => {
+    try {
+      const res = await fetch(`/api/transactions?shift_id=${shiftId}&payment_method=TUNAI`)
+      if (res.ok) {
+        const data = await res.json()
+        const total = data.reduce((sum: number, t: { total: number }) => sum + t.total, 0)
+        setCashSales(total)
+      }
+    } catch (error) {
+      console.error('Error fetching cash sales:', error)
+    }
+  }
+
+  const handleOpenDrawer = async (openingCash: number, notes: string) => {
     if (!user) return
 
     try {
@@ -79,15 +111,21 @@ export default function ShiftPage() {
       const res = await fetch('/api/shifts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ kasir_id: user.id }),
+        body: JSON.stringify({
+          kasir_id: user.id,
+          opening_cash: openingCash,
+          opening_notes: notes || undefined,
+        }),
       })
 
       if (res.ok) {
         const shift = await res.json()
         setActiveShift(shift)
+        setCashSales(0)
+        setShowOpenDrawer(false)
         toast({
           title: 'Shift Dimulai',
-          description: 'Shift Anda telah dimulai',
+          description: `Modal kas: ${formatCurrency(openingCash)}`,
         })
       } else {
         const error = await res.json()
@@ -109,22 +147,29 @@ export default function ShiftPage() {
     }
   }
 
-  const handleEndShift = async () => {
+  const handleCloseDrawer = async (closingCash: number, notes: string) => {
     if (!activeShift) return
 
     try {
       setIsEnding(true)
       const res = await fetch(`/api/shifts/${activeShift.id}`, {
         method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          closing_cash: closingCash,
+          closing_notes: notes || undefined,
+        }),
       })
 
       if (res.ok) {
         const endedShift = await res.json()
+        setShowCloseDrawer(false)
         toast({
           title: 'Shift Ditutup',
           description: `${endedShift.total_transactions} transaksi, ${formatCurrency(endedShift.total_sales)}`,
         })
         setActiveShift(null)
+        setCashSales(0)
       } else {
         const error = await res.json()
         toast({
@@ -179,13 +224,11 @@ export default function ShiftPage() {
     <div className="p-4 space-y-4">
       {/* Header */}
       <div>
-        <h1 className="text-xl font-black text-white">Shift Management</h1>
-        <p className="text-sm text-white/40 mt-1">
-          Kelola shift kerja Anda
-        </p>
+        <h1 className="text-xl font-black text-white">Shift & Cash Drawer</h1>
+        <p className="text-sm text-white/40 mt-1">Kelola shift dan laci kas</p>
       </div>
 
-      {/* Active Shift Status */}
+      {/* Active Shift */}
       {activeShift ? (
         <>
           {/* Shift Info Card */}
@@ -212,12 +255,12 @@ export default function ShiftPage() {
                 <span className="text-3xl font-black text-amber-400 mono">{duration}</span>
               </div>
 
-              {/* Stats */}
+              {/* Stats Grid */}
               <div className="grid grid-cols-2 gap-3 mb-4">
                 <div className="p-3 bg-white/5 rounded-xl">
                   <div className="flex items-center gap-2 mb-1">
                     <DollarSign className="w-4 h-4 text-amber-400" />
-                    <span className="text-xs text-white/60">Total Penjualan</span>
+                    <span className="text-xs text-white/60">Penjualan</span>
                   </div>
                   <p className="text-lg font-black text-white mono">
                     {formatCurrency(activeShift.total_sales)}
@@ -234,14 +277,46 @@ export default function ShiftPage() {
                 </div>
               </div>
 
-              {/* End Shift Button */}
+              {/* Cash Drawer Info */}
+              <div className="p-4 bg-white/5 rounded-xl mb-4 space-y-2">
+                <div className="flex items-center gap-2 mb-2">
+                  <Wallet className="w-4 h-4 text-green-400" />
+                  <span className="text-xs font-semibold text-white/60 uppercase tracking-wider">
+                    Cash Drawer
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-white/60">Modal Awal</span>
+                  <span className="text-sm font-bold text-white mono">
+                    {formatCurrency(activeShift.opening_cash || 0)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-white/60">Penjualan Tunai</span>
+                  <span className="text-sm font-bold text-amber-400 mono">
+                    +{formatCurrency(cashSales)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between pt-2 border-t border-white/10">
+                  <span className="text-xs text-white/80 font-semibold">Estimasi Kas</span>
+                  <span className="text-base font-black text-green-400 mono">
+                    {formatCurrency((activeShift.opening_cash || 0) + cashSales)}
+                  </span>
+                </div>
+                {activeShift.opening_notes && (
+                  <div className="pt-2 border-t border-white/10">
+                    <span className="text-[11px] text-white/40">Catatan: {activeShift.opening_notes}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Close Shift Button */}
               <Button
-                onClick={handleEndShift}
-                disabled={isEnding}
+                onClick={() => setShowCloseDrawer(true)}
                 className="w-full bg-red-400 hover:bg-red-500 text-white font-bold"
               >
-                <Square className="w-4 h-4 mr-2" />
-                {isEnding ? 'Menutup Shift...' : 'Tutup Shift'}
+                <Wallet className="w-4 h-4 mr-2" />
+                Tutup Cash Drawer & Shift
               </Button>
             </CardContent>
           </Card>
@@ -254,7 +329,7 @@ export default function ShiftPage() {
                 <div>
                   <h3 className="font-semibold text-blue-400 text-sm">Shift Sedang Berjalan</h3>
                   <p className="text-xs text-blue-400/80 mt-1">
-                    Anda dapat melakukan transaksi. Tutup shift saat selesai bekerja untuk melihat ringkasan.
+                    Anda dapat melakukan transaksi. Saat menutup shift, hitung uang tunai di laci kas untuk rekonsiliasi.
                   </p>
                 </div>
               </div>
@@ -267,19 +342,18 @@ export default function ShiftPage() {
           <Card className="bg-white/[0.04] border-white/10">
             <CardContent className="p-8 text-center">
               <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Clock className="w-8 h-8 text-white/40" />
+                <Wallet className="w-8 h-8 text-white/40" />
               </div>
               <h3 className="text-lg font-bold text-white mb-2">Tidak Ada Shift Aktif</h3>
               <p className="text-sm text-white/60 mb-6">
-                Mulai shift untuk dapat melakukan transaksi
+                Buka cash drawer dan mulai shift untuk melakukan transaksi
               </p>
               <Button
-                onClick={handleStartShift}
-                disabled={isStarting}
+                onClick={() => setShowOpenDrawer(true)}
                 className="bg-green-400 hover:bg-green-500 text-gray-900 font-bold"
               >
-                <Play className="w-4 h-4 mr-2" />
-                {isStarting ? 'Memulai Shift...' : 'Mulai Shift'}
+                <Wallet className="w-4 h-4 mr-2" />
+                Buka Cash Drawer
               </Button>
             </CardContent>
           </Card>
@@ -288,11 +362,11 @@ export default function ShiftPage() {
           <Card className="bg-amber-400/10 border-amber-400/20">
             <CardContent className="p-4">
               <div className="flex gap-3">
-                <Clock className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+                <Wallet className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
                 <div>
-                  <h3 className="font-semibold text-amber-400 text-sm">Mulai Shift Terlebih Dahulu</h3>
+                  <h3 className="font-semibold text-amber-400 text-sm">Buka Cash Drawer</h3>
                   <p className="text-xs text-amber-400/80 mt-1">
-                    Anda harus memulai shift sebelum dapat melakukan transaksi. Shift akan mencatat semua aktivitas penjualan Anda.
+                    Hitung modal kas awal di laci kasir, lalu mulai shift. Semua transaksi tunai akan dicatat untuk rekonsiliasi saat tutup shift.
                   </p>
                 </div>
               </div>
@@ -300,6 +374,24 @@ export default function ShiftPage() {
           </Card>
         </>
       )}
+
+      {/* Open Drawer Modal */}
+      <OpenDrawerModal
+        isOpen={showOpenDrawer}
+        onClose={() => setShowOpenDrawer(false)}
+        onConfirm={handleOpenDrawer}
+        isLoading={isStarting}
+      />
+
+      {/* Close Drawer Modal */}
+      <CloseDrawerModal
+        isOpen={showCloseDrawer}
+        onClose={() => setShowCloseDrawer(false)}
+        onConfirm={handleCloseDrawer}
+        openingCash={activeShift?.opening_cash || 0}
+        cashSales={cashSales}
+        isLoading={isEnding}
+      />
     </div>
   )
 }
