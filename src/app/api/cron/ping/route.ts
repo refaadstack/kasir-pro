@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 
+export const dynamic = 'force-dynamic'
+
 // GET - Ping database to keep Supabase project alive
 // Supabase pauses free-tier projects after 7 days of inactivity
 // Call this endpoint every 24 hours via Vercel Cron or external service
