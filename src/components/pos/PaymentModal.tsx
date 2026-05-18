@@ -70,6 +70,43 @@ export function PaymentModal({ isOpen, onClose, cart, total, onSuccess }: Paymen
           title: 'Transaksi Berhasil!',
           description: `Kode: ${data.code}`,
         })
+
+        // Auto print receipt
+        const receiptData = {
+          trx_code: data.code,
+          created_at: new Date().toISOString(),
+          items: cart.map(item => ({ name: item.name, qty: item.qty, price: item.price, subtotal: item.price * item.qty })),
+          total_amount: total,
+          payment_method: paymentMethod,
+          cash_received: paymentMethod === 'TUNAI' ? amountPaidNum : total,
+          change_amount: paymentMethod === 'TUNAI' ? Math.max(0, change) : 0,
+        }
+
+        // Print receipt via new window
+        const printWindow = window.open('', '_blank', 'width=400,height=600')
+        if (printWindow) {
+          const itemsHtml = receiptData.items.map(item => 
+            `<div style="font-size:11px">${item.name}</div><div style="display:flex;justify-content:space-between;padding-left:8px;font-size:11px"><span>${item.qty} x ${item.price.toLocaleString('id-ID')}</span><span>${item.subtotal.toLocaleString('id-ID')}</span></div>`
+          ).join('')
+
+          printWindow.document.write(`<html><head><title>Struk</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Courier New',monospace;font-size:12px;width:58mm;padding:4px}.c{text-align:center}.b{font-weight:bold}.l{border-top:1px dashed #000;margin:4px 0}.r{display:flex;justify-content:space-between}@media print{@page{size:58mm auto;margin:0}}</style></head><body>
+            <div class="c"><div class="b" style="font-size:14px">KasirPro</div></div>
+            <div class="l"></div>
+            <div class="r"><span>No:</span><span>${receiptData.trx_code}</span></div>
+            <div class="r"><span>Tgl:</span><span>${new Date().toLocaleString('id-ID',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})}</span></div>
+            <div class="l"></div>
+            ${itemsHtml}
+            <div class="l"></div>
+            <div class="r" style="font-weight:bold;font-size:13px"><span>TOTAL</span><span>Rp ${receiptData.total_amount.toLocaleString('id-ID')}</span></div>
+            <div class="r"><span>${receiptData.payment_method}</span><span>Rp ${receiptData.cash_received.toLocaleString('id-ID')}</span></div>
+            ${receiptData.change_amount > 0 ? `<div class="r"><span>Kembali</span><span>Rp ${receiptData.change_amount.toLocaleString('id-ID')}</span></div>` : ''}
+            <div class="l"></div>
+            <div class="c" style="font-size:10px;margin-top:8px">Terima kasih!<br><span style="font-size:9px">Powered by KasirPro</span></div>
+            <script>window.onload=function(){window.print();window.close()}</script>
+          </body></html>`)
+          printWindow.document.close()
+        }
+
         onSuccess()
         onClose()
       } else {
