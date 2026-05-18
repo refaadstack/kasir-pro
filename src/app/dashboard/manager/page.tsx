@@ -28,6 +28,15 @@ type DashboardStats = {
   todayGrossRevenue: number
   todayNetIncome: number
   todayDrawerOpening: number
+  todayClosingCash: number
+  todayExpectedCash: number
+  todayCashDifference: number
+  monthlyTax: number
+  monthlyServiceCharge: number
+  monthlyDiscount: number
+  monthlySubtotal: number
+  monthlySales: number
+  monthlyNetIncome: number
   activeShifts: number
   totalEmployees: number
   salesGrowth: number
@@ -222,7 +231,6 @@ export default function ManagerDashboard() {
             Ringkasan Keuangan Hari Ini
           </h3>
           <div className="space-y-2">
-            {/* Revenue */}
             <div className="flex justify-between items-center py-1.5">
               <span className="text-xs text-white/60">Penjualan Kotor (Subtotal)</span>
               <span className="text-sm font-bold text-white mono">{formatCurrency(stats.todayGrossRevenue)}</span>
@@ -245,29 +253,99 @@ export default function ManagerDashboard() {
                 <span className="text-sm font-semibold text-cyan-400 mono">+{formatCurrency(stats.todayServiceCharge)}</span>
               </div>
             )}
-            {stats.todayDrawerOpening > 0 && (
-              <div className="flex justify-between items-center py-1.5">
-                <span className="text-xs text-white/60">Modal Drawer (Opening)</span>
-                <span className="text-sm font-semibold text-white/60 mono">{formatCurrency(stats.todayDrawerOpening)}</span>
-              </div>
-            )}
-            {/* Net */}
             <div className="border-t border-white/10 pt-2 mt-2">
               <div className="flex justify-between items-center">
                 <span className="text-sm font-bold text-white">Total Pemasukan Bersih</span>
                 <span className="text-xl font-black text-amber-400 mono">{formatCurrency(stats.todayNetIncome)}</span>
               </div>
-              <p className="text-[11px] text-white/40 mt-1">= Subtotal - Diskon + Pajak + Service Charge</p>
             </div>
-            {stats.todayDrawerOpening > 0 && (
-              <div className="flex justify-between items-center pt-1">
-                <span className="text-xs text-white/40">Estimasi Kas di Drawer</span>
-                <span className="text-sm font-bold text-white mono">{formatCurrency(stats.todayDrawerOpening + stats.todayNetIncome)}</span>
-              </div>
-            )}
           </div>
         </CardContent>
       </Card>
+
+      {/* Cash Reconciliation */}
+      {(stats.todayClosingCash > 0 || stats.todayDrawerOpening > 0) && (
+        <Card className={`border ${stats.todayCashDifference === 0 ? 'bg-green-400/5 border-green-400/20' : stats.todayCashDifference > 0 ? 'bg-blue-400/5 border-blue-400/20' : 'bg-red-400/5 border-red-400/20'}`}>
+          <CardContent className="p-4">
+            <h3 className="text-sm font-bold text-white mb-3">💰 Rekonsiliasi Kas</h3>
+            <div className="space-y-2">
+              {stats.todayDrawerOpening > 0 && (
+                <div className="flex justify-between items-center py-1">
+                  <span className="text-xs text-white/60">Modal Drawer (Opening)</span>
+                  <span className="text-sm text-white mono">{formatCurrency(stats.todayDrawerOpening)}</span>
+                </div>
+              )}
+              {stats.todayExpectedCash > 0 && (
+                <div className="flex justify-between items-center py-1">
+                  <span className="text-xs text-white/60">Kas Seharusnya (Expected)</span>
+                  <span className="text-sm text-white mono">{formatCurrency(stats.todayExpectedCash)}</span>
+                </div>
+              )}
+              {stats.todayClosingCash > 0 && (
+                <div className="flex justify-between items-center py-1">
+                  <span className="text-xs text-white/60">Kas Aktual (Closing)</span>
+                  <span className="text-sm font-bold text-white mono">{formatCurrency(stats.todayClosingCash)}</span>
+                </div>
+              )}
+              {stats.todayCashDifference !== 0 && (
+                <div className="border-t border-white/10 pt-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-semibold text-white">Selisih</span>
+                    <span className={`text-sm font-black mono ${stats.todayCashDifference > 0 ? 'text-blue-400' : 'text-red-400'}`}>
+                      {stats.todayCashDifference > 0 ? '+' : ''}{formatCurrency(stats.todayCashDifference)}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-white/40 mt-1">
+                    {stats.todayCashDifference > 0 ? 'Kelebihan kas' : 'Kekurangan kas'} — perlu investigasi
+                  </p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Monthly Cards: Tax & Service Obligations */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <Card className="bg-white/[0.04] border-white/10">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="p-1.5 bg-amber-400/10 rounded-lg">
+                <TrendingUp className="w-4 h-4 text-amber-400" />
+              </div>
+              <span className="text-[11px] text-white/40 font-semibold uppercase tracking-wider">Laba Bersih Bulan Ini</span>
+            </div>
+            <p className="text-xl font-black text-amber-400 mono">{formatCurrency(stats.monthlyNetIncome)}</p>
+            <p className="text-[11px] text-white/40 mt-1">dari {formatCurrency(stats.monthlySubtotal)} penjualan kotor</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white/[0.04] border-white/10">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="p-1.5 bg-orange-400/10 rounded-lg">
+                <DollarSign className="w-4 h-4 text-orange-400" />
+              </div>
+              <span className="text-[11px] text-white/40 font-semibold uppercase tracking-wider">Pajak Bulan Ini</span>
+            </div>
+            <p className="text-xl font-black text-orange-400 mono">{formatCurrency(stats.monthlyTax)}</p>
+            <p className="text-[11px] text-white/40 mt-1">harus disetorkan ke negara</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white/[0.04] border-white/10">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="p-1.5 bg-cyan-400/10 rounded-lg">
+                <DollarSign className="w-4 h-4 text-cyan-400" />
+              </div>
+              <span className="text-[11px] text-white/40 font-semibold uppercase tracking-wider">Service Fee Bulan Ini</span>
+            </div>
+            <p className="text-xl font-black text-cyan-400 mono">{formatCurrency(stats.monthlyServiceCharge)}</p>
+            <p className="text-[11px] text-white/40 mt-1">pendapatan service charge</p>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Chart */}
       <Card className="bg-white/[0.04] border-white/10">

@@ -151,6 +151,36 @@ export async function GET() {
       ? Math.round(((todaySales - yesterdaySales) / yesterdaySales) * 100)
       : 0
 
+    // Get monthly totals (current month) for tax & service obligations
+    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1)
+    const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 1)
+
+    const { data: monthlyFinancials } = await supabase
+      .from('transactions')
+      .select('tax_amount, service_charge_amount, discount_amount, subtotal_amount, total_amount')
+      .eq('status', 'SUCCESS')
+      .gte('created_at', monthStart.toISOString())
+      .lt('created_at', monthEnd.toISOString())
+
+    const monthlyTax = monthlyFinancials?.reduce((sum, t) => sum + (t.tax_amount || 0), 0) || 0
+    const monthlyServiceCharge = monthlyFinancials?.reduce((sum, t) => sum + (t.service_charge_amount || 0), 0) || 0
+    const monthlyDiscount = monthlyFinancials?.reduce((sum, t) => sum + (t.discount_amount || 0), 0) || 0
+    const monthlySubtotal = monthlyFinancials?.reduce((sum, t) => sum + (t.subtotal_amount || 0), 0) || 0
+    const monthlySales = monthlyFinancials?.reduce((sum, t) => sum + (t.total_amount || 0), 0) || 0
+    const monthlyNetIncome = monthlySales
+
+    // Get closed shifts today for cash reconciliation
+    const { data: closedShiftsToday } = await supabase
+      .from('shifts')
+      .select('closing_cash, expected_cash, cash_difference')
+      .not('end_time', 'is', null)
+      .gte('created_at', today.toISOString())
+      .lt('created_at', tomorrow.toISOString())
+
+    const todayClosingCash = closedShiftsToday?.reduce((sum, s) => sum + (s.closing_cash || 0), 0) || 0
+    const todayExpectedCash = closedShiftsToday?.reduce((sum, s) => sum + (s.expected_cash || 0), 0) || 0
+    const todayCashDifference = closedShiftsToday?.reduce((sum, s) => sum + (s.cash_difference || 0), 0) || 0
+
     return NextResponse.json({
       todaySales,
       todayTransactions: todayTransactionsCount,
@@ -161,6 +191,15 @@ export async function GET() {
       todayGrossRevenue,
       todayNetIncome,
       todayDrawerOpening,
+      todayClosingCash,
+      todayExpectedCash,
+      todayCashDifference,
+      monthlyTax,
+      monthlyServiceCharge,
+      monthlyDiscount,
+      monthlySubtotal,
+      monthlySales,
+      monthlyNetIncome,
       activeProducts: activeProductsCount || 0,
       lowStockProducts: (lowStockCount || 0) + (criticalStockCount || 0),
       activeShifts: activeShiftsCount || 0,
