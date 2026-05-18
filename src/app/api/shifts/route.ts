@@ -18,20 +18,19 @@ export async function GET(req: NextRequest) {
     let query = supabase
       .from('shifts')
       .select('*')
-      .order('started_at', { ascending: false })
+      .order('start_time', { ascending: false })
 
     if (active) {
-      query = query.is('ended_at', null)
+      query = query.is('end_time', null)
     }
 
     if (kasirId) {
-      query = query.eq('kasir_id', kasirId)
+      query = query.eq('user_id', kasirId)
     }
 
     const { data: shifts, error } = await query
 
     if (error) {
-      console.error('GET shifts error:', JSON.stringify(error))
       return NextResponse.json(
         { error: 'Failed to fetch shifts', detail: error.message },
         { status: 500 }
@@ -69,8 +68,8 @@ export async function POST(req: NextRequest) {
     const { data: activeShift } = await supabase
       .from('shifts')
       .select('id')
-      .eq('kasir_id', validated.kasir_id)
-      .is('ended_at', null)
+      .eq('user_id', validated.kasir_id)
+      .is('end_time', null)
       .maybeSingle()
 
     if (activeShift) {
@@ -80,11 +79,11 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Try insert with cash drawer columns first
+    // Create new shift
     const { data: shift, error } = await supabase
       .from('shifts')
       .insert({
-        kasir_id: validated.kasir_id,
+        user_id: validated.kasir_id,
         opening_cash: validated.opening_cash,
         opening_notes: validated.opening_notes || null,
       })
@@ -93,28 +92,13 @@ export async function POST(req: NextRequest) {
 
     if (error) {
       console.error('Insert shift error:', JSON.stringify(error))
-
-      // Fallback: try minimal insert
-      const { data: fallbackShift, error: fallbackError } = await supabase
-        .from('shifts')
-        .insert({
-          kasir_id: validated.kasir_id,
-        })
-        .select('*')
-        .single()
-
-      if (fallbackError) {
-        console.error('Fallback insert error:', JSON.stringify(fallbackError))
-        return NextResponse.json(
-          { error: 'Failed to start shift', detail: fallbackError.message },
-          { status: 500 }
-        )
-      }
-
-      return NextResponse.json(fallbackShift, { status: 201 })
+      return NextResponse.json(
+        { error: 'Failed to start shift', detail: error.message },
+        { status: 500 }
+      )
     }
 
-    // Log activity (fire and forget)
+    // Log activity
     supabase.from('activity_logs').insert({
       user_id: session.id,
       user_name: session.name,

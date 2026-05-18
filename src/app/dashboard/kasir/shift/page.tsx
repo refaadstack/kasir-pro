@@ -12,9 +12,9 @@ import { useToast } from '@/hooks/use-toast'
 
 type Shift = {
   id: string
-  kasir_id: string
-  started_at: string
-  ended_at: string | null
+  user_id: string
+  start_time: string
+  end_time: string | null
   total_sales: number
   total_transactions: number
   opening_cash: number
@@ -23,11 +23,7 @@ type Shift = {
   cash_difference: number
   opening_notes: string | null
   closing_notes: string | null
-  kasir: {
-    id: string
-    name: string
-    email: string
-  }
+  shift_code: string | null
 }
 
 export default function ShiftPage() {
@@ -50,9 +46,9 @@ export default function ShiftPage() {
 
   // Update duration every second
   useEffect(() => {
-    if (activeShift && !activeShift.ended_at) {
+    if (activeShift && !activeShift.end_time) {
       const interval = setInterval(() => {
-        const start = new Date(activeShift.started_at)
+        const start = new Date(activeShift.start_time)
         const now = new Date()
         const diff = now.getTime() - start.getTime()
 
@@ -241,7 +237,7 @@ export default function ShiftPage() {
                 <div className="flex-1">
                   <h3 className="font-bold text-white">Shift Aktif</h3>
                   <p className="text-sm text-white/60">
-                    Dimulai: {formatDateTime(activeShift.started_at)}
+                    Dimulai: {formatDateTime(activeShift.start_time)}
                   </p>
                 </div>
                 <div className="px-3 py-1.5 bg-green-400/20 border border-green-400/30 rounded-lg">

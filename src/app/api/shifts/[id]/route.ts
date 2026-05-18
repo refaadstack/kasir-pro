@@ -18,7 +18,7 @@ export async function PATCH(
     const body = await req.json().catch(() => ({}))
 
     const schema = z.object({
-      closing_cash: z.number().min(0, 'Kas akhir tidak boleh negatif').default(0),
+      closing_cash: z.number().min(0).default(0),
       closing_notes: z.string().optional(),
     })
 
@@ -27,10 +27,7 @@ export async function PATCH(
     // Get shift data
     const { data: shift, error: shiftError } = await supabase
       .from('shifts')
-      .select(`
-        *,
-        kasir:users!shifts_kasir_id_fkey(id, name, email)
-      `)
+      .select('*')
       .eq('id', id)
       .single()
 
@@ -38,7 +35,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Shift not found' }, { status: 404 })
     }
 
-    if (shift.ended_at) {
+    if (shift.end_time) {
       return NextResponse.json(
         { error: 'Shift sudah ditutup' },
         { status: 400 }
@@ -62,15 +59,13 @@ export async function PATCH(
 
     // Expected cash = opening cash + cash sales
     const expectedCash = (shift.opening_cash || 0) + cashSales
-
-    // Cash difference = actual closing cash - expected cash
     const cashDifference = validated.closing_cash - expectedCash
 
     // End the shift
     const { data: updatedShift, error: updateError } = await supabase
       .from('shifts')
       .update({
-        ended_at: new Date().toISOString(),
+        end_time: new Date().toISOString(),
         total_sales: totalSales,
         total_transactions: totalTransactions,
         closing_cash: validated.closing_cash,
@@ -79,36 +74,25 @@ export async function PATCH(
         closing_notes: validated.closing_notes || null,
       })
       .eq('id', id)
-      .select(`
-        *,
-        kasir:users!shifts_kasir_id_fkey(id, name, email)
-      `)
+      .select('*')
       .single()
 
-    if (updateError) throw updateError
+    if (updateError) {
+      console.error('Update shift error:', JSON.stringify(updateError))
+      return NextResponse.json(
+        { error: 'Failed to end shift', detail: updateError.message },
+        { status: 500 }
+      )
+    }
 
     // Log activity
-    const formatCurrency = (amount: number) =>
-      new Intl.NumberFormat('id-ID', {
-        style: 'currency',
-        currency: 'IDR',
-        minimumFractionDigits: 0,
-      }).format(amount)
-
-    const diffLabel =
-      cashDifference > 0
-        ? `surplus ${formatCurrency(cashDifference)}`
-        : cashDifference < 0
-          ? `kurang ${formatCurrency(Math.abs(cashDifference))}`
-          : 'sesuai'
-
-    await supabase.from('activity_logs').insert({
+    supabase.from('activity_logs').insert({
       user_id: session.id,
       user_name: session.name,
       action: 'CLOSE_DRAWER',
-      target: shift.kasir.name,
-      detail: `Tutup shift - ${totalTransactions} transaksi, penjualan ${formatCurrency(totalSales)}, kas ${diffLabel}`,
-    })
+      target: session.name,
+      detail: `Tutup shift - ${totalTransactions} transaksi, Rp ${totalSales.toLocaleString('id-ID')}`,
+    }).then(() => {})
 
     return NextResponse.json(updatedShift)
   } catch (error) {
@@ -141,10 +125,7 @@ export async function GET(
 
     const { data: shift, error } = await supabase
       .from('shifts')
-      .select(`
-        *,
-        kasir:users!shifts_kasir_id_fkey(id, name, email)
-      `)
+      .select('*')
       .eq('id', id)
       .single()
 
