@@ -14,16 +14,25 @@ export async function GET(req: NextRequest) {
 
     const { data: logs, error } = await supabase
       .from('audit_logs')
-      .select('*')
+      .select('*, user:users!user_id(name)')
       .order('created_at', { ascending: false })
       .limit(limit)
 
     if (error) {
-      console.error('Logs fetch error:', JSON.stringify(error))
-      return NextResponse.json(
-        { error: 'Failed to fetch logs', detail: error.message || JSON.stringify(error) },
-        { status: 500 }
-      )
+      // Fallback tanpa join jika gagal
+      const { data: logsSimple, error: errSimple } = await supabase
+        .from('audit_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(limit)
+
+      if (errSimple) {
+        return NextResponse.json(
+          { error: 'Failed to fetch logs', detail: errSimple.message || JSON.stringify(errSimple) },
+          { status: 500 }
+        )
+      }
+      return NextResponse.json(logsSimple || [])
     }
 
     return NextResponse.json(logs || [])

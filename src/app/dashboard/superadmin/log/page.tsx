@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Search, Activity, Filter } from 'lucide-react'
+import { Search, Activity } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -10,27 +10,28 @@ import { useToast } from '@/hooks/use-toast'
 
 type ActivityLog = {
   id: string
-  user_name: string
+  user_id: string
   action: string
-  target: string | null
   detail: string | null
   created_at: string
+  user?: {
+    name: string
+  }
 }
 
 const actionLabels: Record<string, { label: string; color: string }> = {
   CREATE_TRANSACTION: { label: 'Transaksi Baru', color: 'text-green-400' },
+  OPEN_DRAWER: { label: 'Buka Shift', color: 'text-blue-400' },
+  CLOSE_DRAWER: { label: 'Tutup Shift', color: 'text-purple-400' },
+  VOID: { label: 'Void Transaksi', color: 'text-red-400' },
   CREATE_PRODUCT: { label: 'Tambah Produk', color: 'text-blue-400' },
   UPDATE_PRODUCT: { label: 'Update Produk', color: 'text-yellow-400' },
   DELETE_PRODUCT: { label: 'Hapus Produk', color: 'text-red-400' },
   CREATE_CATEGORY: { label: 'Tambah Kategori', color: 'text-blue-400' },
   UPDATE_CATEGORY: { label: 'Update Kategori', color: 'text-yellow-400' },
   DELETE_CATEGORY: { label: 'Hapus Kategori', color: 'text-red-400' },
-  CREATE_USER: { label: 'Tambah Karyawan', color: 'text-blue-400' },
-  UPDATE_USER: { label: 'Update Karyawan', color: 'text-yellow-400' },
-  DELETE_USER: { label: 'Hapus Karyawan', color: 'text-red-400' },
   UPDATE_SETTINGS: { label: 'Update Pengaturan', color: 'text-purple-400' },
-  LOGIN: { label: 'Login', color: 'text-green-400' },
-  LOGOUT: { label: 'Logout', color: 'text-gray-400' },
+  DB_PING: { label: 'System Ping', color: 'text-gray-400' },
 }
 
 export default function LogPage() {
@@ -50,9 +51,8 @@ export default function LogPage() {
 
     if (search) {
       filtered = filtered.filter(log => 
-        log.user_name.toLowerCase().includes(search.toLowerCase()) ||
+        (log.user?.name || '').toLowerCase().includes(search.toLowerCase()) ||
         log.action.toLowerCase().includes(search.toLowerCase()) ||
-        log.target?.toLowerCase().includes(search.toLowerCase()) ||
         log.detail?.toLowerCase().includes(search.toLowerCase())
       )
     }
@@ -203,17 +203,11 @@ export default function LogPage() {
                     {/* Content */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <span className="font-bold text-white text-sm">{log.user_name}</span>
+                        <span className="font-bold text-white text-sm">{log.user?.name || 'System'}</span>
                         <span className="text-white/40">•</span>
                         <span className={`text-sm font-semibold ${actionInfo.color}`}>
                           {actionInfo.label}
                         </span>
-                        {log.target && (
-                          <>
-                            <span className="text-white/40">•</span>
-                            <span className="text-sm text-white/60 truncate">{log.target}</span>
-                          </>
-                        )}
                       </div>
                       {log.detail && (
                         <p className="text-xs text-white/40 mt-1">{log.detail}</p>
