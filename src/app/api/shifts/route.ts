@@ -80,23 +80,54 @@ export async function POST(req: NextRequest) {
     }
 
     // Create new shift with opening cash
+    const shiftData: Record<string, unknown> = {
+      kasir_id: validated.kasir_id,
+      started_at: new Date().toISOString(),
+      total_sales: 0,
+      total_transactions: 0,
+    }
+
+    // Only add cash drawer fields if they exist in the table
+    if (validated.opening_cash !== undefined) {
+      shiftData.opening_cash = validated.opening_cash
+    }
+    if (validated.opening_notes) {
+      shiftData.opening_notes = validated.opening_notes
+    }
+
     const { data: shift, error } = await supabase
       .from('shifts')
-      .insert({
-        kasir_id: validated.kasir_id,
-        started_at: new Date().toISOString(),
-        total_sales: 0,
-        total_transactions: 0,
-        opening_cash: validated.opening_cash,
-        opening_notes: validated.opening_notes || null,
-      })
+      .insert(shiftData)
       .select(`
         *,
         kasir:users!shifts_kasir_id_fkey(id, name, email)
       `)
       .single()
 
-    if (error) throw error
+    if (error) {
+      console.error('Supabase insert error:', error)
+      // If error is about missing columns, try without cash drawer fields
+      if (error.message?.includes('opening_cash') || error.message?.includes('column')) {
+        const { data: fallbackShift, error: fallbackError } = await supabase
+          .from('shifts')
+          .insert({
+            kasir_id: validated.kasir_id,
+            started_at: new Date().toISOString(),
+            total_sales: 0,
+            total_transactions: 0,
+          })
+          .select(`
+            *,
+            kasir:users!shifts_kasir_id_fkey(id, name, email)
+          `)
+          .single()
+
+        if (fallbackError) throw fallbackError
+
+        return NextResponse.json(fallbackShift, { status: 201 })
+      }
+      throw error
+    }
 
     // Log activity
     const formatCurrency = (amount: number) =>
@@ -124,7 +155,7 @@ export async function POST(req: NextRequest) {
     }
     console.error('Error starting shift:', error)
     return NextResponse.json(
-      { error: 'Failed to start shift' },
+      { error: 'Failed to start shift', detail: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     )
   }
