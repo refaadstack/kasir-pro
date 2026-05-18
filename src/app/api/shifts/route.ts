@@ -17,25 +17,26 @@ export async function GET(req: NextRequest) {
 
     let query = supabase
       .from('shifts')
-      .select(`
-        *,
-        kasir:users!shifts_kasir_id_fkey(id, name, email)
-      `)
+      .select('*')
       .order('started_at', { ascending: false })
 
-    // Filter for active shifts only
     if (active) {
       query = query.is('ended_at', null)
     }
 
-    // Filter by kasir_id if provided
     if (kasirId) {
       query = query.eq('kasir_id', kasirId)
     }
 
     const { data: shifts, error } = await query
 
-    if (error) throw error
+    if (error) {
+      console.error('GET shifts error:', JSON.stringify(error))
+      return NextResponse.json(
+        { error: 'Failed to fetch shifts', detail: error.message },
+        { status: 500 }
+      )
+    }
 
     return NextResponse.json(shifts || [])
   } catch (error) {
@@ -47,7 +48,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST - Start a new shift with opening cash drawer
+// POST - Start a new shift
 export async function POST(req: NextRequest) {
   try {
     const session = await getSession()
@@ -57,8 +58,8 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json()
     const schema = z.object({
-      kasir_id: z.string().uuid(),
-      opening_cash: z.number().min(0, 'Modal kas tidak boleh negatif').default(0),
+      kasir_id: z.string(),
+      opening_cash: z.number().min(0).default(0),
       opening_notes: z.string().optional(),
     })
 
@@ -70,7 +71,7 @@ export async function POST(req: NextRequest) {
       .select('id')
       .eq('kasir_id', validated.kasir_id)
       .is('ended_at', null)
-      .single()
+      .maybeSingle()
 
     if (activeShift) {
       return NextResponse.json(
@@ -79,71 +80,54 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Create new shift with opening cash
-    const shiftData: Record<string, unknown> = {
-      kasir_id: validated.kasir_id,
-      started_at: new Date().toISOString(),
-      total_sales: 0,
-      total_transactions: 0,
-    }
-
-    // Only add cash drawer fields if they exist in the table
-    if (validated.opening_cash !== undefined) {
-      shiftData.opening_cash = validated.opening_cash
-    }
-    if (validated.opening_notes) {
-      shiftData.opening_notes = validated.opening_notes
-    }
-
+    // Try insert with cash drawer columns first
     const { data: shift, error } = await supabase
       .from('shifts')
-      .insert(shiftData)
-      .select(`
-        *,
-        kasir:users!shifts_kasir_id_fkey(id, name, email)
-      `)
+      .insert({
+        kasir_id: validated.kasir_id,
+        started_at: new Date().toISOString(),
+        total_sales: 0,
+        total_transactions: 0,
+        opening_cash: validated.opening_cash,
+        opening_notes: validated.opening_notes || null,
+      })
+      .select('*')
       .single()
 
     if (error) {
-      console.error('Supabase insert error:', error)
-      // If error is about missing columns, try without cash drawer fields
-      if (error.message?.includes('opening_cash') || error.message?.includes('column')) {
-        const { data: fallbackShift, error: fallbackError } = await supabase
-          .from('shifts')
-          .insert({
-            kasir_id: validated.kasir_id,
-            started_at: new Date().toISOString(),
-            total_sales: 0,
-            total_transactions: 0,
-          })
-          .select(`
-            *,
-            kasir:users!shifts_kasir_id_fkey(id, name, email)
-          `)
-          .single()
+      console.error('Insert shift error:', JSON.stringify(error))
 
-        if (fallbackError) throw fallbackError
+      // Fallback: try without cash drawer columns
+      const { data: fallbackShift, error: fallbackError } = await supabase
+        .from('shifts')
+        .insert({
+          kasir_id: validated.kasir_id,
+          started_at: new Date().toISOString(),
+          total_sales: 0,
+          total_transactions: 0,
+        })
+        .select('*')
+        .single()
 
-        return NextResponse.json(fallbackShift, { status: 201 })
+      if (fallbackError) {
+        console.error('Fallback insert error:', JSON.stringify(fallbackError))
+        return NextResponse.json(
+          { error: 'Failed to start shift', detail: fallbackError.message },
+          { status: 500 }
+        )
       }
-      throw error
+
+      return NextResponse.json(fallbackShift, { status: 201 })
     }
 
-    // Log activity
-    const formatCurrency = (amount: number) =>
-      new Intl.NumberFormat('id-ID', {
-        style: 'currency',
-        currency: 'IDR',
-        minimumFractionDigits: 0,
-      }).format(amount)
-
-    await supabase.from('activity_logs').insert({
+    // Log activity (fire and forget)
+    supabase.from('activity_logs').insert({
       user_id: session.id,
       user_name: session.name,
       action: 'OPEN_DRAWER',
-      target: shift.kasir.name,
-      detail: `Buka shift dengan modal kas ${formatCurrency(validated.opening_cash)}`,
-    })
+      target: session.name,
+      detail: `Buka shift dengan modal kas Rp ${validated.opening_cash.toLocaleString('id-ID')}`,
+    }).then(() => {})
 
     return NextResponse.json(shift, { status: 201 })
   } catch (error) {
@@ -155,7 +139,7 @@ export async function POST(req: NextRequest) {
     }
     console.error('Error starting shift:', error)
     return NextResponse.json(
-      { error: 'Failed to start shift', detail: error instanceof Error ? error.message : String(error) },
+      { error: 'Failed to start shift', detail: String(error) },
       { status: 500 }
     )
   }
