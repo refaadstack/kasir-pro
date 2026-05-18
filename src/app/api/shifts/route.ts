@@ -85,9 +85,6 @@ export async function POST(req: NextRequest) {
       .from('shifts')
       .insert({
         kasir_id: validated.kasir_id,
-        started_at: new Date().toISOString(),
-        total_sales: 0,
-        total_transactions: 0,
         opening_cash: validated.opening_cash,
         opening_notes: validated.opening_notes || null,
       })
@@ -97,14 +94,11 @@ export async function POST(req: NextRequest) {
     if (error) {
       console.error('Insert shift error:', JSON.stringify(error))
 
-      // Fallback: try without cash drawer columns
+      // Fallback: try minimal insert
       const { data: fallbackShift, error: fallbackError } = await supabase
         .from('shifts')
         .insert({
           kasir_id: validated.kasir_id,
-          started_at: new Date().toISOString(),
-          total_sales: 0,
-          total_transactions: 0,
         })
         .select('*')
         .single()
