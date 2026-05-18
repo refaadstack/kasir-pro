@@ -61,9 +61,7 @@ export async function PATCH(req: NextRequest) {
     // Log activity
     supabase.from('audit_logs').insert({
       user_id: session.id,
-      user_name: session.name,
       action: 'UPDATE_SETTINGS',
-      target: 'Settings',
       detail: 'Pengaturan toko diupdate',
     }).then(() => {})
 

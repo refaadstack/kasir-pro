@@ -108,9 +108,7 @@ export async function POST(req: NextRequest) {
     // Log activity
     supabase.from('audit_logs').insert({
       user_id: session.id,
-      user_name: session.name,
       action: 'OPEN_DRAWER',
-      target: session.name,
       detail: `Buka shift dengan modal kas Rp ${validated.opening_cash.toLocaleString('id-ID')}`,
     }).then(() => {})
 

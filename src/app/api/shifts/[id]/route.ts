@@ -88,9 +88,7 @@ export async function PATCH(
     // Log activity
     supabase.from('audit_logs').insert({
       user_id: session.id,
-      user_name: session.name,
       action: 'CLOSE_DRAWER',
-      target: session.name,
       detail: `Tutup shift - ${totalTransactions} transaksi, Rp ${totalSales.toLocaleString('id-ID')}`,
     }).then(() => {})
 

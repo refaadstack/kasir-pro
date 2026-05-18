@@ -40,9 +40,7 @@ export async function GET(req: NextRequest) {
     // Log the ping (fire and forget)
     supabase.from('audit_logs').insert({
       user_id: null,
-      user_name: 'SYSTEM',
       action: 'DB_PING',
-      target: 'database',
       detail: `Ping successful - ${responseTime}ms`,
     }).then(() => {})
 

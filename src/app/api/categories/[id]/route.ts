@@ -32,9 +32,7 @@ export async function PATCH(
     // Log activity
     await supabase.from('audit_logs').insert({
       user_id: session.id,
-      user_name: session.name,
       action: 'UPDATE_CATEGORY',
-      target: name,
       detail: `Kategori diupdate menjadi "${name}"`,
     })
 
@@ -77,9 +75,7 @@ export async function DELETE(
     if (category) {
       await supabase.from('audit_logs').insert({
         user_id: session.id,
-        user_name: session.name,
         action: 'DELETE_CATEGORY',
-        target: category.name,
         detail: `Kategori "${category.name}" dihapus`,
       })
     }
