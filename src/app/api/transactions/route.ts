@@ -88,11 +88,11 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // 3. Update product stock and total_sold
+    // 3. Update product stock
     for (const item of items) {
       const { data: product } = await supabase
         .from('products')
-        .select('stock, total_sold')
+        .select('stock')
         .eq('id', item.productId)
         .single()
 
@@ -101,7 +101,6 @@ export async function POST(req: NextRequest) {
           .from('products')
           .update({
             stock: Math.max(0, product.stock - item.qty),
-            total_sold: (product.total_sold || 0) + item.qty,
           })
           .eq('id', item.productId)
       }
