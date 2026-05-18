@@ -8,7 +8,8 @@ import {
   Users, 
   FileText, 
   Settings,
-  Tag
+  Tag,
+  Clock
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -17,6 +18,7 @@ const navItems = [
   { label: 'Produk', href: '/dashboard/superadmin/produk', icon: Package },
   { label: 'Kategori', href: '/dashboard/superadmin/kategori', icon: Tag },
   { label: 'Karyawan', href: '/dashboard/superadmin/karyawan', icon: Users },
+  { label: 'Shift', href: '/dashboard/superadmin/shift', icon: Clock },
   { label: 'Laporan', href: '/dashboard/superadmin/laporan', icon: FileText },
   { label: 'Lainnya', href: '/dashboard/superadmin/more', icon: Settings },
 ]

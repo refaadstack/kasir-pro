@@ -8,13 +8,15 @@ import {
   FileText, 
   Activity,
   Users,
-  Settings
+  Settings,
+  Clock
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const navItems = [
   { label: 'Dashboard', href: '/dashboard/manager', icon: LayoutDashboard },
   { label: 'Transaksi', href: '/dashboard/manager/transaksi', icon: Receipt },
+  { label: 'Shift', href: '/dashboard/manager/shift', icon: Clock },
   { label: 'Laporan', href: '/dashboard/manager/laporan', icon: FileText },
   { label: 'Karyawan', href: '/dashboard/manager/karyawan', icon: Users },
   { label: 'Activity Log', href: '/dashboard/manager/log', icon: Activity },
