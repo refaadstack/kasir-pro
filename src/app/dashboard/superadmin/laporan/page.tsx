@@ -180,30 +180,38 @@ export default function LaporanPage() {
         </Card>
       </div>
 
-      {/* Chart */}
+      {/* Chart - Real data from top products */}
       <Card className="bg-white/[0.04] border-white/10">
         <CardHeader>
-          <CardTitle className="text-sm font-bold text-white">Grafik Penjualan</CardTitle>
+          <CardTitle className="text-sm font-bold text-white">Grafik Produk Terlaris</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-end gap-2 h-40">
-            {[40, 65, 45, 80, 55, 90, 70].map((height, i) => (
-              <div key={i} className="flex-1 flex flex-col justify-end">
-                <div className="text-center mb-1">
-                  <span className="text-[10px] text-white/60 font-semibold">
-                    {Math.floor(Math.random() * 500) + 100}k
-                  </span>
-                </div>
-                <div 
-                  className="bg-gradient-to-t from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 rounded-t transition-all cursor-pointer"
-                  style={{ height: `${height}%` }}
-                />
-                <div className="text-[9px] text-white/30 text-center mt-1">
-                  {['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'][i]}
-                </div>
-              </div>
-            ))}
-          </div>
+          {stats.topProducts.length === 0 ? (
+            <p className="text-white/40 text-sm text-center py-8">Belum ada data penjualan</p>
+          ) : (
+            <div className="flex items-end gap-3 h-44 px-2 pt-4">
+              {stats.topProducts.slice(0, 7).map((product, i) => {
+                const maxRevenue = Math.max(...stats.topProducts.slice(0, 7).map(p => p.revenue), 1)
+                const heightPercent = Math.max((product.revenue / maxRevenue) * 100, 12)
+                return (
+                  <div key={i} className="flex-1 flex flex-col items-center justify-end group relative">
+                    <div className="text-center mb-1 opacity-0 group-hover:opacity-100 transition-opacity absolute -top-1">
+                      <span className="text-[10px] text-pink-400 font-bold bg-[#16161f] px-1 rounded">
+                        {formatCurrency(product.revenue).replace('Rp', '')}
+                      </span>
+                    </div>
+                    <div 
+                      className="w-full bg-pink-500 hover:bg-pink-400 rounded-md transition-all cursor-pointer shadow-lg shadow-pink-500/30"
+                      style={{ height: `${heightPercent}%` }}
+                    />
+                    <div className="text-[9px] text-white/50 text-center mt-2 font-medium truncate w-full px-1">
+                      {product.name.length > 6 ? product.name.slice(0, 6) + '..' : product.name}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </CardContent>
       </Card>
 

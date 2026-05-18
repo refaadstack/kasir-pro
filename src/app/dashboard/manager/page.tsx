@@ -215,23 +215,33 @@ export default function ManagerDashboard() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="flex items-end gap-3 h-40 px-2">
-            {stats.weeklyChart.percentages.map((height, i) => (
-              <div key={i} className="flex-1 flex flex-col items-center justify-end group">
-                <div className="text-center mb-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <span className="text-[10px] text-pink-400 font-bold">
-                    {stats.weeklyChart.data[i] > 0 ? formatCurrency(stats.weeklyChart.data[i]).replace('Rp', '') : ''}
-                  </span>
+          <div className="flex items-end gap-3 h-44 px-2 pt-4">
+            {stats.weeklyChart.data.map((value, i) => {
+              const maxVal = Math.max(...stats.weeklyChart.data, 1)
+              const heightPercent = value > 0 ? Math.max((value / maxVal) * 100, 12) : 3
+              return (
+                <div key={i} className="flex-1 flex flex-col items-center justify-end group relative">
+                  {value > 0 && (
+                    <div className="text-center mb-1 opacity-0 group-hover:opacity-100 transition-opacity absolute -top-1">
+                      <span className="text-[10px] text-pink-400 font-bold bg-[#16161f] px-1 rounded">
+                        {formatCurrency(value).replace('Rp', '')}
+                      </span>
+                    </div>
+                  )}
+                  <div 
+                    className={`w-full rounded-md transition-all cursor-pointer ${
+                      value > 0 
+                        ? 'bg-pink-500 hover:bg-pink-400 shadow-lg shadow-pink-500/30' 
+                        : 'bg-white/10'
+                    }`}
+                    style={{ height: `${heightPercent}%` }}
+                  />
+                  <div className="text-[10px] text-white/50 text-center mt-2 font-medium">
+                    {stats.weeklyChart.labels[i]}
+                  </div>
                 </div>
-                <div 
-                  className="w-full bg-pink-500 rounded-md transition-all cursor-pointer hover:bg-pink-400 shadow-lg shadow-pink-500/30"
-                  style={{ height: stats.weeklyChart.data[i] > 0 ? `${Math.max(height, 20)}%` : '4px', opacity: stats.weeklyChart.data[i] > 0 ? 1 : 0.2 }}
-                />
-                <div className="text-[10px] text-white/50 text-center mt-2 font-medium">
-                  {stats.weeklyChart.labels[i]}
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </CardContent>
       </Card>
