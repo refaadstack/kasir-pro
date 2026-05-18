@@ -18,13 +18,19 @@ export async function GET(req: NextRequest) {
       .order('created_at', { ascending: false })
       .limit(limit)
 
-    if (error) throw error
+    if (error) {
+      console.error('Logs fetch error:', JSON.stringify(error))
+      return NextResponse.json(
+        { error: 'Failed to fetch logs', detail: error.message || JSON.stringify(error) },
+        { status: 500 }
+      )
+    }
 
     return NextResponse.json(logs || [])
   } catch (error) {
     console.error('Error fetching logs:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch logs' },
+      { error: 'Failed to fetch logs', detail: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     )
   }
