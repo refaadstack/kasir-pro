@@ -15,6 +15,7 @@ type Product = {
   categoryId: string | null
   emoji: string
   isActive: boolean
+  tax_percent: number
 }
 
 type ProductModalProps = {
@@ -33,6 +34,7 @@ export function ProductModal({ isOpen, onClose, onSuccess, product }: ProductMod
     categoryId: '',
     emoji: '📦',
     isActive: true,
+    tax_percent: '0',
   })
   const [isLoading, setIsLoading] = useState(false)
   const [categories, setCategories] = useState<any[]>([])
@@ -50,6 +52,7 @@ export function ProductModal({ isOpen, onClose, onSuccess, product }: ProductMod
           categoryId: product.categoryId || '',
           emoji: product.emoji || '📦',
           isActive: product.isActive,
+          tax_percent: (product.tax_percent || 0).toString(),
         })
       } else {
         setFormData({
@@ -60,6 +63,7 @@ export function ProductModal({ isOpen, onClose, onSuccess, product }: ProductMod
           categoryId: '',
           emoji: '📦',
           isActive: true,
+          tax_percent: '0',
         })
       }
     }
@@ -216,6 +220,24 @@ export function ProductModal({ isOpen, onClose, onSuccess, product }: ProductMod
                 min="0"
               />
             </div>
+          </div>
+
+          {/* Tax */}
+          <div>
+            <label className="block text-xs font-semibold text-white/60 mb-2 uppercase tracking-wider">
+              Pajak (%)
+            </label>
+            <Input
+              type="number"
+              value={formData.tax_percent}
+              onChange={(e) => setFormData({ ...formData, tax_percent: e.target.value })}
+              placeholder="0"
+              className="bg-white/5 border-white/10 text-white"
+              min="0"
+              max="100"
+              step="0.1"
+            />
+            <p className="text-[11px] text-white/40 mt-1">Set 0 jika produk tidak kena pajak</p>
           </div>
 
           {/* Category */}

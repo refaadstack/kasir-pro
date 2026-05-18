@@ -11,7 +11,9 @@ const DEFAULT_SETTINGS = {
   paper_width: '58mm',
   logo_url: null,
   tax_percent: 0,
+  service_charge_percent: 0,
   receipt_prefix: 'TRX',
+  trx_code_format: 'PREFIX-TIMESTAMP-RANDOM',
 }
 
 // GET /api/settings
@@ -45,7 +47,7 @@ export async function PATCH(req: NextRequest) {
     const body = await req.json()
 
     // Only update fields that exist
-    const allowedFields = ['store_name', 'store_address', 'store_phone', 'receipt_footer', 'paper_width', 'logo_url', 'tax_percent', 'receipt_prefix']
+    const allowedFields = ['store_name', 'store_address', 'store_phone', 'receipt_footer', 'paper_width', 'logo_url', 'tax_percent', 'service_charge_percent', 'receipt_prefix', 'trx_code_format']
     const updateData: Record<string, unknown> = {}
     for (const key of allowedFields) {
       if (key in body) {

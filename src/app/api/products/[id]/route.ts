@@ -13,7 +13,7 @@ export async function PATCH(
     }
 
     const body = await req.json()
-    const { name, sku, price, stock, categoryId, emoji, isActive } = body
+    const { name, sku, price, stock, categoryId, emoji, isActive, tax_percent } = body
 
     // Cek SKU duplikat (kecuali produk ini sendiri)
     if (sku) {
@@ -40,6 +40,7 @@ export async function PATCH(
     if (categoryId !== undefined) updateData.category_id = categoryId || null
     if (emoji !== undefined) updateData.emoji = emoji
     if (isActive !== undefined) updateData.is_active = isActive
+    if (tax_percent !== undefined) updateData.tax_percent = parseFloat(tax_percent) || 0
 
     const { data: product, error } = await supabase
       .from('products')

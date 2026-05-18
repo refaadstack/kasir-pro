@@ -9,11 +9,22 @@ export type CartItem = {
   qty: number
   subtotal: number
   stock: number
+  tax_percent: number
+}
+
+export type CartDiscount = {
+  type: 'percent' | 'fixed'
+  value: number
+  code?: string // coupon code
+  label?: string
 }
 
 type CartState = {
   items: CartItem[]
   total: number
+  discount: CartDiscount | null
+  discountAmount: number
+  totalAfterDiscount: number
 }
 
 type CartAction =
@@ -22,17 +33,36 @@ type CartAction =
   | { type: 'UPDATE_QTY'; payload: { id: string; qty: number } }
   | { type: 'CLEAR_CART' }
   | { type: 'LOAD_CART'; payload: CartState }
+  | { type: 'APPLY_DISCOUNT'; payload: CartDiscount }
+  | { type: 'REMOVE_DISCOUNT' }
 
 type CartContextType = CartState & {
   addItem: (item: Omit<CartItem, 'qty' | 'subtotal'>) => void
   removeItem: (id: string) => void
   updateQty: (id: string, qty: number) => void
   clearCart: () => void
+  applyDiscount: (discount: CartDiscount) => void
+  removeDiscount: () => void
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined)
 
 const STORAGE_KEY = 'kasirpro_cart'
+
+function calculateDiscount(total: number, discount: CartDiscount | null): number {
+  if (!discount) return 0
+  if (discount.type === 'percent') {
+    return Math.round(total * discount.value / 100)
+  }
+  return Math.min(discount.value, total)
+}
+
+function recalculate(items: CartItem[], discount: CartDiscount | null): CartState {
+  const total = items.reduce((sum, item) => sum + item.subtotal, 0)
+  const discountAmount = calculateDiscount(total, discount)
+  const totalAfterDiscount = Math.max(0, total - discountAmount)
+  return { items, total, discount, discountAmount, totalAfterDiscount }
+}
 
 function cartReducer(state: CartState, action: CartAction): CartState {
   switch (action.type) {
@@ -40,13 +70,11 @@ function cartReducer(state: CartState, action: CartAction): CartState {
       const existingIndex = state.items.findIndex(item => item.id === action.payload.id)
       
       if (existingIndex >= 0) {
-        // Item sudah ada, tambah qty
         const newItems = [...state.items]
         const newQty = newItems[existingIndex].qty + 1
         
-        // Cek stok
         if (newQty > action.payload.stock) {
-          return state // Tidak bisa tambah, stok tidak cukup
+          return state
         }
         
         newItems[existingIndex] = {
@@ -55,25 +83,21 @@ function cartReducer(state: CartState, action: CartAction): CartState {
           subtotal: newQty * newItems[existingIndex].price,
         }
         
-        const total = newItems.reduce((sum, item) => sum + item.subtotal, 0)
-        return { items: newItems, total }
+        return recalculate(newItems, state.discount)
       } else {
-        // Item baru
         const newItem: CartItem = {
           ...action.payload,
           qty: 1,
           subtotal: action.payload.price,
         }
         const newItems = [...state.items, newItem]
-        const total = newItems.reduce((sum, item) => sum + item.subtotal, 0)
-        return { items: newItems, total }
+        return recalculate(newItems, state.discount)
       }
     }
 
     case 'REMOVE_ITEM': {
       const newItems = state.items.filter(item => item.id !== action.payload)
-      const total = newItems.reduce((sum, item) => sum + item.subtotal, 0)
-      return { items: newItems, total }
+      return recalculate(newItems, state.discount)
     }
 
     case 'UPDATE_QTY': {
@@ -88,15 +112,22 @@ function cartReducer(state: CartState, action: CartAction): CartState {
         }
         return item
       })
-      const total = newItems.reduce((sum, item) => sum + item.subtotal, 0)
-      return { items: newItems, total }
+      return recalculate(newItems, state.discount)
     }
 
     case 'CLEAR_CART':
-      return { items: [], total: 0 }
+      return { items: [], total: 0, discount: null, discountAmount: 0, totalAfterDiscount: 0 }
 
     case 'LOAD_CART':
       return action.payload
+
+    case 'APPLY_DISCOUNT': {
+      return recalculate(state.items, action.payload)
+    }
+
+    case 'REMOVE_DISCOUNT': {
+      return recalculate(state.items, null)
+    }
 
     default:
       return state
@@ -104,7 +135,7 @@ function cartReducer(state: CartState, action: CartAction): CartState {
 }
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  const [state, dispatch] = useReducer(cartReducer, { items: [], total: 0 })
+  const [state, dispatch] = useReducer(cartReducer, { items: [], total: 0, discount: null, discountAmount: 0, totalAfterDiscount: 0 })
 
   // Load dari sessionStorage saat mount
   useEffect(() => {
@@ -112,6 +143,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     if (stored) {
       try {
         const parsed = JSON.parse(stored)
+        // Ensure backward compatibility
+        if (!('discount' in parsed)) {
+          parsed.discount = null
+          parsed.discountAmount = 0
+          parsed.totalAfterDiscount = parsed.total || 0
+        }
         dispatch({ type: 'LOAD_CART', payload: parsed })
       } catch (error) {
         console.error('Failed to load cart:', error)
@@ -140,8 +177,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: 'CLEAR_CART' })
   }
 
+  const applyDiscount = (discount: CartDiscount) => {
+    dispatch({ type: 'APPLY_DISCOUNT', payload: discount })
+  }
+
+  const removeDiscount = () => {
+    dispatch({ type: 'REMOVE_DISCOUNT' })
+  }
+
   return (
-    <CartContext.Provider value={{ ...state, addItem, removeItem, updateQty, clearCart }}>
+    <CartContext.Provider value={{ ...state, addItem, removeItem, updateQty, clearCart, applyDiscount, removeDiscount }}>
       {children}
     </CartContext.Provider>
   )

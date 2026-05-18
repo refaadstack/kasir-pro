@@ -11,6 +11,7 @@ export type Product = {
   image_url: string | null
   is_active: boolean
   total_sold: number
+  tax_percent: number
 }
 
 export function useProducts() {

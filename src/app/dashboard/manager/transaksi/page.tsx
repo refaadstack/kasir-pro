@@ -1,12 +1,13 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Search, Receipt, Ban, X } from 'lucide-react'
+import { Search, Receipt, Ban, X, CheckCircle2, XCircle } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
+import { TransactionDetailModal } from '@/components/pos/TransactionDetailModal'
 import { useToast } from '@/hooks/use-toast'
 
 type Transaction = {
@@ -17,6 +18,10 @@ type Transaction = {
   status: string
   created_at: string
   void_reason: string | null
+  edc_code: string | null
+  discount_amount: number
+  tax_amount: number
+  service_charge_amount: number
 }
 
 export default function TransaksiPage() {
@@ -29,6 +34,7 @@ export default function TransaksiPage() {
   const [voidReason, setVoidReason] = useState('')
   const [voidPin, setVoidPin] = useState('')
   const [isVoiding, setIsVoiding] = useState(false)
+  const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -153,12 +159,26 @@ export default function TransaksiPage() {
       ) : (
         <div className="space-y-2">
           {filteredTransactions.map((transaction) => (
-            <Card key={transaction.id} className="bg-white/[0.04] border-white/10">
+            <Card
+              key={transaction.id}
+              className={`cursor-pointer transition-all hover:scale-[1.01] ${
+                transaction.status === 'SUCCESS'
+                  ? 'bg-white/[0.04] border-white/10 hover:border-green-400/30'
+                  : 'bg-red-400/[0.03] border-red-400/20 hover:border-red-400/40'
+              }`}
+              onClick={() => setSelectedTransactionId(transaction.id)}
+            >
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-amber-400/10 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <Receipt className="w-5 h-5 text-amber-400" />
-                  </div>
+                  {transaction.status === 'SUCCESS' ? (
+                    <div className="w-10 h-10 bg-green-400/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <CheckCircle2 className="w-5 h-5 text-green-400" />
+                    </div>
+                  ) : (
+                    <div className="w-10 h-10 bg-red-400/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <XCircle className="w-5 h-5 text-red-400" />
+                    </div>
+                  )}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <span className="font-bold text-white text-sm mono">{transaction.trx_code}</span>
@@ -168,17 +188,18 @@ export default function TransaksiPage() {
                         {transaction.status === 'SUCCESS' ? 'Selesai' : 'Void'}
                       </span>
                     </div>
-                    <p className="text-xs text-white/60">
-                      {transaction.payment_method} • {formatDate(transaction.created_at)}
-                      {transaction.void_reason && <span className="text-red-400"> • {transaction.void_reason}</span>}
-                    </p>
+                    <div className="flex items-center gap-2 text-xs text-white/60 flex-wrap">
+                      <span>{transaction.payment_method} • {formatDate(transaction.created_at)}</span>
+                      {transaction.edc_code && <span className="text-blue-400">EDC: {transaction.edc_code}</span>}
+                    </div>
+                    {transaction.void_reason && <p className="text-xs text-red-400/80 mt-1">Alasan: {transaction.void_reason}</p>}
                   </div>
                   <span className="text-lg font-black text-amber-400 mono flex-shrink-0">
                     {formatCurrency(transaction.total_amount)}
                   </span>
                   {transaction.status === 'SUCCESS' && (
                     <button
-                      onClick={() => setVoidModal({ open: true, transaction })}
+                      onClick={(e) => { e.stopPropagation(); setVoidModal({ open: true, transaction }) }}
                       className="p-2 bg-red-400/10 hover:bg-red-400/20 border border-red-400/20 hover:border-red-400/40 rounded-lg transition-all flex-shrink-0"
                       title="Void Transaksi"
                     >
@@ -253,6 +274,13 @@ export default function TransaksiPage() {
           </div>
         </div>
       )}
+
+      {/* Transaction Detail Modal */}
+      <TransactionDetailModal
+        isOpen={!!selectedTransactionId}
+        onClose={() => setSelectedTransactionId(null)}
+        transactionId={selectedTransactionId}
+      />
     </div>
   )
 }

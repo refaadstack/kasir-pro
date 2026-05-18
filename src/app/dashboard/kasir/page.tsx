@@ -46,6 +46,7 @@ export default function KasirDashboard() {
       name: product.name,
       price: product.price,
       stock: product.stock,
+      tax_percent: product.tax_percent || 0,
     })
 
     toast({

@@ -14,7 +14,9 @@ type Settings = {
   store_phone: string
   logo_url: string
   tax_percent: number
+  service_charge_percent: number
   receipt_prefix: string
+  trx_code_format: string
   receipt_footer: string
   paper_width: string
 }
@@ -26,7 +28,9 @@ export default function PengaturanPage() {
     store_phone: '',
     logo_url: '',
     tax_percent: 0,
+    service_charge_percent: 0,
     receipt_prefix: 'TRX',
+    trx_code_format: 'PREFIX-TIMESTAMP-RANDOM',
     receipt_footer: 'Terima kasih!',
     paper_width: '58mm',
   })
@@ -50,7 +54,9 @@ export default function PengaturanPage() {
           store_phone: data.store_phone || '',
           logo_url: data.logo_url || '',
           tax_percent: data.tax_percent || 0,
+          service_charge_percent: data.service_charge_percent || 0,
           receipt_prefix: data.receipt_prefix || 'TRX',
+          trx_code_format: data.trx_code_format || 'PREFIX-TIMESTAMP-RANDOM',
           receipt_footer: data.receipt_footer || 'Terima kasih!',
           paper_width: data.paper_width || '58mm',
         })
@@ -143,7 +149,7 @@ export default function PengaturanPage() {
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-white/60 mb-2 uppercase tracking-wider">Pajak (%)</label>
+            <label className="block text-xs font-semibold text-white/60 mb-2 uppercase tracking-wider">Pajak Default (%)</label>
             <Input
               type="number"
               value={settings.tax_percent}
@@ -153,6 +159,20 @@ export default function PengaturanPage() {
               min="0"
               max="100"
             />
+            <p className="text-[11px] text-white/40 mt-1">Pajak default untuk produk baru. Pajak aktual diatur per produk di halaman Produk.</p>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-white/60 mb-2 uppercase tracking-wider">Service Charge (%)</label>
+            <Input
+              type="number"
+              value={settings.service_charge_percent}
+              onChange={(e) => setSettings({ ...settings, service_charge_percent: parseFloat(e.target.value) || 0 })}
+              placeholder="0"
+              className="bg-white/5 border-white/10 text-white"
+              min="0"
+              max="100"
+            />
+            <p className="text-[11px] text-white/40 mt-1">Service charge akan dihitung dari total setelah diskon</p>
           </div>
         </CardContent>
       </Card>
@@ -205,7 +225,30 @@ export default function PengaturanPage() {
               placeholder="TRX"
               className="bg-white/5 border-white/10 text-white"
             />
-            <p className="text-[11px] text-white/40 mt-1">Contoh: TRX-1716012345-ABC</p>
+            <p className="text-[11px] text-white/40 mt-1">Prefix yang muncul di awal kode transaksi</p>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-white/60 mb-2 uppercase tracking-wider">Format Kode Transaksi</label>
+            <div className="space-y-2">
+              {[
+                { value: 'PREFIX-TIMESTAMP-RANDOM', label: 'Prefix-Timestamp-Random', example: `${settings.receipt_prefix || 'TRX'}-1716012345-ABC` },
+                { value: 'PREFIX-DATE-RANDOM', label: 'Prefix-Tanggal-Random', example: `${settings.receipt_prefix || 'TRX'}-20260518-ABC` },
+                { value: 'PREFIX-RANDOM', label: 'Prefix-Random', example: `${settings.receipt_prefix || 'TRX'}-ABCDE123` },
+              ].map((fmt) => (
+                <button
+                  key={fmt.value}
+                  onClick={() => setSettings({ ...settings, trx_code_format: fmt.value })}
+                  className={`w-full p-3 rounded-xl border text-left transition-all ${
+                    settings.trx_code_format === fmt.value
+                      ? 'bg-green-400/10 border-green-400/30'
+                      : 'bg-white/5 border-white/10 hover:bg-white/10'
+                  }`}
+                >
+                  <div className={`text-sm font-semibold ${settings.trx_code_format === fmt.value ? 'text-green-400' : 'text-white'}`}>{fmt.label}</div>
+                  <div className="text-[11px] text-white/40 mono mt-0.5">{fmt.example}</div>
+                </button>
+              ))}
+            </div>
           </div>
           <div>
             <label className="block text-xs font-semibold text-white/60 mb-2 uppercase tracking-wider">Footer Struk</label>
@@ -270,8 +313,17 @@ export default function PengaturanPage() {
             {settings.tax_percent > 0 && (
               <div className="flex justify-between text-gray-600"><span>Pajak ({settings.tax_percent}%)</span><span>Rp {Math.round(25000 * settings.tax_percent / 100).toLocaleString('id-ID')}</span></div>
             )}
+            {settings.service_charge_percent > 0 && (
+              <div className="flex justify-between text-gray-600"><span>Service ({settings.service_charge_percent}%)</span><span>Rp {Math.round(25000 * settings.service_charge_percent / 100).toLocaleString('id-ID')}</span></div>
+            )}
+            {(settings.tax_percent > 0 || settings.service_charge_percent > 0) && (
+              <div className="flex justify-between font-bold" style={{ fontSize: '13px' }}>
+                <span>GRAND TOTAL</span>
+                <span>Rp {(25000 + Math.round(25000 * settings.tax_percent / 100) + Math.round(25000 * settings.service_charge_percent / 100)).toLocaleString('id-ID')}</span>
+              </div>
+            )}
             <div className="flex justify-between"><span>TUNAI</span><span>Rp 50.000</span></div>
-            <div className="flex justify-between"><span>Kembali</span><span>Rp 25.000</span></div>
+            <div className="flex justify-between"><span>Kembali</span><span>Rp {(50000 - 25000 - Math.round(25000 * settings.tax_percent / 100) - Math.round(25000 * settings.service_charge_percent / 100)).toLocaleString('id-ID')}</span></div>
             <div className="border-t border-dashed border-black my-2" />
             <div className="text-center text-[10px]">
               {settings.receipt_footer || 'Terima kasih!'}

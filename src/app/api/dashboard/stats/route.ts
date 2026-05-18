@@ -30,6 +30,17 @@ export async function GET() {
     const todaySales = todayTransactions?.reduce((sum, t) => sum + (t.total_amount || 0), 0) || 0
     const todayTransactionsCount = todayTransactions?.length || 0
 
+    // Get today's tax and service charge totals
+    const { data: todayTaxService } = await supabase
+      .from('transactions')
+      .select('tax_amount, service_charge_amount')
+      .eq('status', 'SUCCESS')
+      .gte('created_at', today.toISOString())
+      .lt('created_at', tomorrow.toISOString())
+
+    const todayTax = todayTaxService?.reduce((sum, t) => sum + (t.tax_amount || 0), 0) || 0
+    const todayServiceCharge = todayTaxService?.reduce((sum, t) => sum + (t.service_charge_amount || 0), 0) || 0
+
     // Get active products count
     const { count: activeProductsCount } = await supabase
       .from('products')
@@ -124,6 +135,8 @@ export async function GET() {
     return NextResponse.json({
       todaySales,
       todayTransactions: todayTransactionsCount,
+      todayTax,
+      todayServiceCharge,
       activeProducts: activeProductsCount || 0,
       lowStockProducts: (lowStockCount || 0) + (criticalStockCount || 0),
       activeShifts: activeShiftsCount || 0,

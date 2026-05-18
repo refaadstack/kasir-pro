@@ -1,21 +1,29 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Search, Receipt, Calendar } from 'lucide-react'
+import { Search, Receipt, Calendar, CheckCircle2, XCircle } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
+import { TransactionDetailModal } from '@/components/pos/TransactionDetailModal'
 import { useToast } from '@/hooks/use-toast'
 
 type Transaction = {
   id: string
   trx_code: string
   total_amount: number
+  subtotal_amount: number
+  tax_amount: number
+  service_charge_amount: number
+  discount_amount: number
+  discount_code: string | null
+  edc_code: string | null
   payment_method: string
   cash_received: number
   change_amount: number
   status: string
+  void_reason: string | null
   created_at: string
 }
 
@@ -25,6 +33,8 @@ export default function RiwayatPage() {
   const [filteredTransactions, setFilteredTransactions] = useState<Transaction[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState<string | null>(null)
+  const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null)
 
   useEffect(() => {
     fetchTransactions()
@@ -39,8 +49,12 @@ export default function RiwayatPage() {
       )
     }
 
+    if (statusFilter) {
+      filtered = filtered.filter(t => t.status === statusFilter)
+    }
+
     setFilteredTransactions(filtered)
-  }, [search, transactions])
+  }, [search, statusFilter, transactions])
 
   const fetchTransactions = async () => {
     try {
@@ -95,9 +109,9 @@ export default function RiwayatPage() {
         </p>
       </div>
 
-      {/* Search */}
+      {/* Search & Filter */}
       <Card className="bg-white/[0.04] border-white/10">
-        <CardContent className="p-4">
+        <CardContent className="p-4 space-y-3">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
             <Input
@@ -107,6 +121,23 @@ export default function RiwayatPage() {
               onChange={(e) => setSearch(e.target.value)}
               className="pl-10 bg-white/5 border-white/10 text-white"
             />
+          </div>
+          <div className="flex gap-2">
+            {[
+              { value: null, label: 'Semua' },
+              { value: 'SUCCESS', label: 'Selesai' },
+              { value: 'VOID', label: 'Void' },
+            ].map((item) => (
+              <button
+                key={item.label}
+                onClick={() => setStatusFilter(item.value)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  statusFilter === item.value ? 'bg-amber-400 text-gray-900' : 'bg-white/5 text-white/60 hover:bg-white/10'
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
           </div>
         </CardContent>
       </Card>
@@ -144,13 +175,27 @@ export default function RiwayatPage() {
 
               {/* Transactions */}
               {dateTransactions.map((transaction) => (
-                <Card key={transaction.id} className="bg-white/[0.04] border-white/10">
+                <Card
+                  key={transaction.id}
+                  className={`cursor-pointer transition-all hover:scale-[1.01] ${
+                    transaction.status === 'SUCCESS'
+                      ? 'bg-white/[0.04] border-white/10 hover:border-green-400/30'
+                      : 'bg-red-400/[0.03] border-red-400/20 hover:border-red-400/40'
+                  }`}
+                  onClick={() => setSelectedTransactionId(transaction.id)}
+                >
                   <CardContent className="p-4">
                     <div className="flex items-start gap-3">
-                      {/* Icon */}
-                      <div className="w-10 h-10 bg-amber-400/10 rounded-xl flex items-center justify-center flex-shrink-0">
-                        <Receipt className="w-5 h-5 text-amber-400" />
-                      </div>
+                      {/* Status Icon */}
+                      {transaction.status === 'SUCCESS' ? (
+                        <div className="w-10 h-10 bg-green-400/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                          <CheckCircle2 className="w-5 h-5 text-green-400" />
+                        </div>
+                      ) : (
+                        <div className="w-10 h-10 bg-red-400/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                          <XCircle className="w-5 h-5 text-red-400" />
+                        </div>
+                      )}
 
                       {/* Content */}
                       <div className="flex-1 min-w-0">
@@ -161,13 +206,22 @@ export default function RiwayatPage() {
                               ? 'bg-green-400/20 text-green-400'
                               : 'bg-red-400/20 text-red-400'
                           }`}>
-                            {transaction.status === 'SUCCESS' ? 'Selesai' : 'Dibatalkan'}
+                            {transaction.status === 'SUCCESS' ? 'Selesai' : 'Void'}
                           </span>
                         </div>
-                        <p className="text-xs text-white/60 mb-2">
-                          {transaction.payment_method}
-                        </p>
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-xs text-white/60 flex-wrap">
+                          <span>{transaction.payment_method}</span>
+                          {transaction.edc_code && (
+                            <span className="text-blue-400">EDC: {transaction.edc_code}</span>
+                          )}
+                          {transaction.discount_amount > 0 && (
+                            <span className="text-green-400">Diskon: {formatCurrency(transaction.discount_amount)}</span>
+                          )}
+                        </div>
+                        {transaction.void_reason && (
+                          <p className="text-xs text-red-400/80 mt-1">Alasan: {transaction.void_reason}</p>
+                        )}
+                        <div className="flex items-center justify-between mt-2">
                           <span className="text-lg font-black text-amber-400 mono">
                             {formatCurrency(transaction.total_amount)}
                           </span>
@@ -187,6 +241,13 @@ export default function RiwayatPage() {
           ))}
         </div>
       )}
+
+      {/* Transaction Detail Modal */}
+      <TransactionDetailModal
+        isOpen={!!selectedTransactionId}
+        onClose={() => setSelectedTransactionId(null)}
+        transactionId={selectedTransactionId}
+      />
     </div>
   )
 }

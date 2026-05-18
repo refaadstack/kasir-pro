@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json()
-    const { name, sku, price, stock, categoryId, emoji, isActive } = body
+    const { name, sku, price, stock, categoryId, emoji, isActive, tax_percent } = body
 
     // Validasi
     if (!name || !sku || price === undefined || stock === undefined) {
@@ -74,6 +74,7 @@ export async function POST(req: NextRequest) {
         category_id: categoryId || null,
         emoji: emoji || '📦',
         is_active: isActive !== false,
+        tax_percent: parseFloat(tax_percent) || 0,
       }])
       .select()
       .single()

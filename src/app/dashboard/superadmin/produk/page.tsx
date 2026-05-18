@@ -21,6 +21,7 @@ type Product = {
   category?: { name: string }
   isActive: boolean
   emoji: string
+  tax_percent: number
 }
 
 export default function ProdukPage() {

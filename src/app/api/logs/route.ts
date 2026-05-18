@@ -2,6 +2,39 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { getSession } from '@/lib/auth'
 
+// POST /api/logs - Create a new audit log entry
+export async function POST(req: NextRequest) {
+  try {
+    const session = await getSession()
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const body = await req.json()
+    const { action, detail } = body
+
+    if (!action) {
+      return NextResponse.json({ error: 'Action is required' }, { status: 400 })
+    }
+
+    const { error } = await supabase.from('audit_logs').insert({
+      user_id: session.id,
+      action,
+      detail: detail || null,
+    })
+
+    if (error) {
+      console.error('Log insert error:', JSON.stringify(error))
+      return NextResponse.json({ error: 'Failed to create log' }, { status: 500 })
+    }
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Error creating log:', error)
+    return NextResponse.json({ error: 'Failed to create log' }, { status: 500 })
+  }
+}
+
 export async function GET(req: NextRequest) {
   try {
     const session = await getSession()

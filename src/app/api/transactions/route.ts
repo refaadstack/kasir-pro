@@ -2,6 +2,24 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
 
+// Helper to generate transaction code based on settings
+function generateTrxCode(prefix: string, format: string): string {
+  const timestamp = Date.now()
+  const random = Math.random().toString(36).substr(2, 5).toUpperCase()
+  const date = new Date()
+  const dateStr = `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}`
+
+  switch (format) {
+    case 'PREFIX-DATE-RANDOM':
+      return `${prefix}-${dateStr}-${random}`
+    case 'PREFIX-RANDOM':
+      return `${prefix}-${random}${Math.random().toString(36).substr(2, 3).toUpperCase()}`
+    case 'PREFIX-TIMESTAMP-RANDOM':
+    default:
+      return `${prefix}-${timestamp}-${random}`
+  }
+}
+
 // POST /api/transactions - Create new transaction
 export async function POST(req: NextRequest) {
   try {
@@ -11,7 +29,20 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json()
-    const { items, total, paymentMethod, amountPaid, change } = body
+    const {
+      items,
+      total,
+      paymentMethod,
+      amountPaid,
+      change,
+      taxAmount,
+      serviceChargeAmount,
+      discountAmount,
+      discountCode,
+      discountLabel,
+      edcCode,
+      grandTotal,
+    } = body
 
     // Validate required fields
     if (!items || !Array.isArray(items) || items.length === 0) {
@@ -37,8 +68,18 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    // Get settings for transaction code generation
+    const { data: settings } = await supabase
+      .from('store_settings')
+      .select('receipt_prefix, trx_code_format')
+      .limit(1)
+      .maybeSingle()
+
+    const prefix = settings?.receipt_prefix || 'TRX'
+    const format = settings?.trx_code_format || 'PREFIX-TIMESTAMP-RANDOM'
+
     // Generate transaction code
-    const code = `TRX-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`
+    const code = generateTrxCode(prefix, format)
 
     // 1. Insert transaction
     const { data: transaction, error: transactionError } = await supabase
@@ -47,9 +88,16 @@ export async function POST(req: NextRequest) {
         trx_code: code,
         user_id: session.id,
         shift_id: activeShift.id,
-        total_amount: total,
+        total_amount: grandTotal || total,
+        subtotal_amount: total,
+        tax_amount: taxAmount || 0,
+        service_charge_amount: serviceChargeAmount || 0,
+        discount_amount: discountAmount || 0,
+        discount_code: discountCode || null,
+        discount_label: discountLabel || null,
+        edc_code: edcCode || null,
         payment_method: paymentMethod,
-        cash_received: amountPaid || total,
+        cash_received: amountPaid || grandTotal || total,
         change_amount: change || 0,
         status: 'SUCCESS',
       })
@@ -65,11 +113,14 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. Insert transaction items
-    const transactionItems = items.map((item: { productId: string; productName: string; price: number; qty: number; subtotal: number }) => ({
+    const transactionItems = items.map((item: { productId: string; productName: string; price: number; qty: number; subtotal: number; taxPercent?: number; taxAmount?: number }) => ({
       transaction_id: transaction.id,
       product_id: item.productId,
+      product_name: item.productName,
       price_at_sale: item.price,
       qty: item.qty,
+      tax_percent_at_sale: item.taxPercent || 0,
+      tax_amount: item.taxAmount || 0,
     }))
 
     const { error: itemsError } = await supabase
@@ -108,7 +159,7 @@ export async function POST(req: NextRequest) {
     supabase.from('audit_logs').insert({
       user_id: session.id,
       action: 'CREATE_TRANSACTION',
-      detail: `Total: Rp ${total.toLocaleString('id-ID')}, Method: ${paymentMethod}`,
+      detail: `Total: Rp ${(grandTotal || total).toLocaleString('id-ID')}, Method: ${paymentMethod}${edcCode ? `, EDC: ${edcCode}` : ''}${discountCode ? `, Kupon: ${discountCode}` : ''}`,
     }).then(() => {})
 
     return NextResponse.json({
@@ -138,10 +189,11 @@ export async function GET(req: NextRequest) {
     const status = searchParams.get('status')
     const shiftId = searchParams.get('shift_id')
     const paymentMethodFilter = searchParams.get('payment_method')
+    const withItems = searchParams.get('with_items') === 'true'
 
     let query = supabase
       .from('transactions')
-      .select('*')
+      .select(withItems ? '*, items:transaction_items(*)' : '*')
       .order('created_at', { ascending: false })
       .limit(limit)
 

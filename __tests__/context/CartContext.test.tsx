@@ -29,6 +29,7 @@ describe('CartContext', () => {
         name: 'Test Product',
         price: 10000,
         stock: 10,
+        tax_percent: 0,
       })
     })
 
@@ -46,6 +47,7 @@ describe('CartContext', () => {
       name: 'Test Product',
       price: 10000,
       stock: 10,
+      tax_percent: 0,
     }
 
     act(() => {
@@ -67,6 +69,7 @@ describe('CartContext', () => {
         name: 'Test Product',
         price: 10000,
         stock: 10,
+        tax_percent: 0,
       })
     })
 
@@ -89,6 +92,7 @@ describe('CartContext', () => {
         name: 'Test Product',
         price: 10000,
         stock: 10,
+        tax_percent: 0,
       })
     })
 
@@ -109,6 +113,7 @@ describe('CartContext', () => {
         name: 'Test Product',
         price: 10000,
         stock: 10,
+        tax_percent: 0,
       })
     })
 
@@ -128,12 +133,14 @@ describe('CartContext', () => {
         name: 'Product 1',
         price: 10000,
         stock: 10,
+        tax_percent: 0,
       })
       result.current.addItem({
         id: '2',
         name: 'Product 2',
         price: 20000,
         stock: 5,
+        tax_percent: 10,
       })
     })
 
@@ -156,12 +163,14 @@ describe('CartContext', () => {
         name: 'Product 1',
         price: 10000,
         stock: 10,
+        tax_percent: 0,
       })
       result.current.addItem({
         id: '2',
         name: 'Product 2',
         price: 20000,
         stock: 5,
+        tax_percent: 0,
       })
       result.current.updateQty('1', 3)
     })
