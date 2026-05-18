@@ -31,15 +31,34 @@ export async function GET() {
     const todayTransactionsCount = todayTransactions?.length || 0
 
     // Get today's tax and service charge totals
-    const { data: todayTaxService } = await supabase
+    const { data: todayFinancials } = await supabase
       .from('transactions')
-      .select('tax_amount, service_charge_amount')
+      .select('tax_amount, service_charge_amount, discount_amount, subtotal_amount, total_amount')
       .eq('status', 'SUCCESS')
       .gte('created_at', today.toISOString())
       .lt('created_at', tomorrow.toISOString())
 
-    const todayTax = todayTaxService?.reduce((sum, t) => sum + (t.tax_amount || 0), 0) || 0
-    const todayServiceCharge = todayTaxService?.reduce((sum, t) => sum + (t.service_charge_amount || 0), 0) || 0
+    const todayTax = todayFinancials?.reduce((sum, t) => sum + (t.tax_amount || 0), 0) || 0
+    const todayServiceCharge = todayFinancials?.reduce((sum, t) => sum + (t.service_charge_amount || 0), 0) || 0
+    const todayDiscount = todayFinancials?.reduce((sum, t) => sum + (t.discount_amount || 0), 0) || 0
+    const todaySubtotal = todayFinancials?.reduce((sum, t) => sum + (t.subtotal_amount || 0), 0) || 0
+
+    // Get today's drawer data (opening cash from active/closed shifts today)
+    const { data: todayShifts } = await supabase
+      .from('shifts')
+      .select('opening_cash, closing_cash')
+      .gte('created_at', today.toISOString())
+      .lt('created_at', tomorrow.toISOString())
+
+    const todayDrawerOpening = todayShifts?.reduce((sum, s) => sum + (s.opening_cash || 0), 0) || 0
+
+    // Net revenue = total sales (what customer paid) - this is the grand total including tax & service
+    // Gross profit = subtotal (product sales before tax/service/discount)
+    // Deductions: discount given away
+    // Collections: tax collected, service charge collected
+    // Net income = subtotal - discount + tax + service = total_amount (what's actually received minus drawer)
+    const todayNetIncome = todaySales // total_amount is what's received from customers
+    const todayGrossRevenue = todaySubtotal // product revenue before adjustments
 
     // Get active products count
     const { count: activeProductsCount } = await supabase
@@ -137,6 +156,11 @@ export async function GET() {
       todayTransactions: todayTransactionsCount,
       todayTax,
       todayServiceCharge,
+      todayDiscount,
+      todaySubtotal,
+      todayGrossRevenue,
+      todayNetIncome,
+      todayDrawerOpening,
       activeProducts: activeProductsCount || 0,
       lowStockProducts: (lowStockCount || 0) + (criticalStockCount || 0),
       activeShifts: activeShiftsCount || 0,

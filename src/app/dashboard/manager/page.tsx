@@ -23,6 +23,11 @@ type DashboardStats = {
   todayTransactions: number
   todayTax: number
   todayServiceCharge: number
+  todayDiscount: number
+  todaySubtotal: number
+  todayGrossRevenue: number
+  todayNetIncome: number
+  todayDrawerOpening: number
   activeShifts: number
   totalEmployees: number
   salesGrowth: number
@@ -209,46 +214,60 @@ export default function ManagerDashboard() {
         </Card>
       </div>
 
-      {/* Tax & Service Charge Summary */}
-      {(stats.todayTax > 0 || stats.todayServiceCharge > 0) && (
-        <div className="grid grid-cols-2 gap-3">
-          <Card className="bg-white/[0.04] border-white/10">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-orange-400/10 rounded-lg">
-                  <DollarSign className="w-5 h-5 text-orange-400" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-xs text-white/40 font-semibold uppercase tracking-wider">
-                    Pajak Hari Ini
-                  </p>
-                  <p className="text-lg font-black text-orange-400 mono mt-0.5">
-                    {formatCurrency(stats.todayTax)}
-                  </p>
-                </div>
+      {/* Financial Summary - Laba/Rugi */}
+      <Card className="bg-white/[0.04] border-white/10">
+        <CardContent className="p-4">
+          <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+            <DollarSign className="w-4 h-4 text-amber-400" />
+            Ringkasan Keuangan Hari Ini
+          </h3>
+          <div className="space-y-2">
+            {/* Revenue */}
+            <div className="flex justify-between items-center py-1.5">
+              <span className="text-xs text-white/60">Penjualan Kotor (Subtotal)</span>
+              <span className="text-sm font-bold text-white mono">{formatCurrency(stats.todayGrossRevenue)}</span>
+            </div>
+            {stats.todayDiscount > 0 && (
+              <div className="flex justify-between items-center py-1.5">
+                <span className="text-xs text-green-400">Diskon Diberikan</span>
+                <span className="text-sm font-semibold text-green-400 mono">-{formatCurrency(stats.todayDiscount)}</span>
               </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white/[0.04] border-white/10">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-cyan-400/10 rounded-lg">
-                  <DollarSign className="w-5 h-5 text-cyan-400" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-xs text-white/40 font-semibold uppercase tracking-wider">
-                    Service Charge
-                  </p>
-                  <p className="text-lg font-black text-cyan-400 mono mt-0.5">
-                    {formatCurrency(stats.todayServiceCharge)}
-                  </p>
-                </div>
+            )}
+            {stats.todayTax > 0 && (
+              <div className="flex justify-between items-center py-1.5">
+                <span className="text-xs text-white/60">Pajak Terkumpul</span>
+                <span className="text-sm font-semibold text-orange-400 mono">+{formatCurrency(stats.todayTax)}</span>
               </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+            )}
+            {stats.todayServiceCharge > 0 && (
+              <div className="flex justify-between items-center py-1.5">
+                <span className="text-xs text-white/60">Service Charge</span>
+                <span className="text-sm font-semibold text-cyan-400 mono">+{formatCurrency(stats.todayServiceCharge)}</span>
+              </div>
+            )}
+            {stats.todayDrawerOpening > 0 && (
+              <div className="flex justify-between items-center py-1.5">
+                <span className="text-xs text-white/60">Modal Drawer (Opening)</span>
+                <span className="text-sm font-semibold text-white/60 mono">{formatCurrency(stats.todayDrawerOpening)}</span>
+              </div>
+            )}
+            {/* Net */}
+            <div className="border-t border-white/10 pt-2 mt-2">
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-bold text-white">Total Pemasukan Bersih</span>
+                <span className="text-xl font-black text-amber-400 mono">{formatCurrency(stats.todayNetIncome)}</span>
+              </div>
+              <p className="text-[11px] text-white/40 mt-1">= Subtotal - Diskon + Pajak + Service Charge</p>
+            </div>
+            {stats.todayDrawerOpening > 0 && (
+              <div className="flex justify-between items-center pt-1">
+                <span className="text-xs text-white/40">Estimasi Kas di Drawer</span>
+                <span className="text-sm font-bold text-white mono">{formatCurrency(stats.todayDrawerOpening + stats.todayNetIncome)}</span>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Chart */}
       <Card className="bg-white/[0.04] border-white/10">
