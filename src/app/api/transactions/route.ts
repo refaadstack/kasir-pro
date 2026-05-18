@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
         payment_method: paymentMethod,
         cash_received: amountPaid || total,
         change_amount: change || 0,
-        status: 'COMPLETED',
+        status: 'completed',
       })
       .select()
       .single()
@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
     if (transactionError) {
       console.error('Transaction insert error:', JSON.stringify(transactionError))
       return NextResponse.json(
-        { error: 'Gagal membuat transaksi', detail: transactionError.message },
+        { error: 'Gagal membuat transaksi', detail: transactionError.message || transactionError.details || transactionError.hint || JSON.stringify(transactionError) },
         { status: 500 }
       )
     }
