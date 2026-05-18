@@ -79,11 +79,18 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    // Generate shift code
+    const now = new Date()
+    const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '')
+    const timeStr = now.toTimeString().slice(0, 5).replace(':', '')
+    const shiftCode = `SHF-${dateStr}-${timeStr}`
+
     // Create new shift
     const { data: shift, error } = await supabase
       .from('shifts')
       .insert({
         user_id: validated.kasir_id,
+        shift_code: shiftCode,
         opening_cash: validated.opening_cash,
         opening_notes: validated.opening_notes || null,
       })

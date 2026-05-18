@@ -45,11 +45,11 @@ export async function GET() {
       .select('*', { count: 'exact', head: true })
       .eq('stock', 0)
 
-    // Get active shifts count (shifts without ended_at)
+    // Get active shifts count (shifts without end_time)
     const { count: activeShiftsCount } = await supabase
       .from('shifts')
       .select('*', { count: 'exact', head: true })
-      .is('ended_at', null)
+      .is('end_time', null)
 
     // Get total employees count
     const { count: totalEmployees } = await supabase

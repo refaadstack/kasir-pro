@@ -4,11 +4,13 @@ import { useState, useEffect } from 'react'
 
 export type Shift = {
   id: string
-  kasir_id: string
-  started_at: string
-  ended_at: string | null
+  user_id: string
+  start_time: string
+  end_time: string | null
   total_sales: number
   total_transactions: number
+  opening_cash: number
+  closing_cash: number
 }
 
 export function useShift(kasirId?: string) {
@@ -62,7 +64,7 @@ export function useShift(kasirId?: string) {
       const res = await fetch(`/api/shifts/${shiftId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ended_at: new Date().toISOString() }),
+        body: JSON.stringify({ closing_cash: 0 }),
       })
       if (!res.ok) throw new Error('Failed to end shift')
       setShift(null)
