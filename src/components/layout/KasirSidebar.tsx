@@ -5,13 +5,15 @@ import { usePathname } from 'next/navigation'
 import { 
   ShoppingCart, 
   Clock, 
-  Receipt
+  Receipt,
+  Package
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const navItems = [
   { label: 'POS', href: '/dashboard/kasir', icon: ShoppingCart },
   { label: 'Shift', href: '/dashboard/kasir/shift', icon: Clock },
+  { label: 'Restock', href: '/dashboard/kasir/restock', icon: Package },
   { label: 'Riwayat', href: '/dashboard/kasir/riwayat', icon: Receipt },
 ]
 
