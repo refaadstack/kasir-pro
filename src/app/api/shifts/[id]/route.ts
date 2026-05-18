@@ -45,17 +45,17 @@ export async function PATCH(
     // Calculate total sales and transactions for this shift
     const { data: transactions } = await supabase
       .from('transactions')
-      .select('total, payment_method')
+      .select('total_amount, payment_method')
       .eq('shift_id', id)
       .eq('status', 'SUCCESS')
 
-    const totalSales = transactions?.reduce((sum, t) => sum + t.total, 0) || 0
+    const totalSales = transactions?.reduce((sum, t) => sum + t.total_amount, 0) || 0
     const totalTransactions = transactions?.length || 0
 
     // Calculate cash sales only (TUNAI)
     const cashSales = transactions
       ?.filter(t => t.payment_method === 'TUNAI')
-      .reduce((sum, t) => sum + t.total, 0) || 0
+      .reduce((sum, t) => sum + t.total_amount, 0) || 0
 
     // Expected cash = opening cash + cash sales
     const expectedCash = (shift.opening_cash || 0) + cashSales

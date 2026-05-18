@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Clock, DollarSign, ShoppingCart, Timer, Wallet, TrendingUp, TrendingDown } from 'lucide-react'
+import { Clock, DollarSign, ShoppingCart, Timer, Wallet } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
@@ -44,6 +44,16 @@ export default function ShiftPage() {
     }
   }, [user])
 
+  // Auto-refresh stats every 30 seconds
+  useEffect(() => {
+    if (activeShift && !activeShift.end_time) {
+      const interval = setInterval(() => {
+        fetchShiftStats(activeShift.id)
+      }, 30000)
+      return () => clearInterval(interval)
+    }
+  }, [activeShift])
+
   // Update duration every second
   useEffect(() => {
     if (activeShift && !activeShift.end_time) {
@@ -74,9 +84,9 @@ export default function ShiftPage() {
         const shift = data[0] || null
         setActiveShift(shift)
 
-        // Fetch cash sales for this shift
+        // Fetch real-time stats for this shift
         if (shift) {
-          fetchCashSales(shift.id)
+          fetchShiftStats(shift.id)
         }
       }
     } catch (error) {
@@ -86,16 +96,26 @@ export default function ShiftPage() {
     }
   }
 
-  const fetchCashSales = async (shiftId: string) => {
+  const fetchShiftStats = async (shiftId: string) => {
     try {
-      const res = await fetch(`/api/transactions?shift_id=${shiftId}&payment_method=TUNAI`)
+      const res = await fetch(`/api/transactions?shift_id=${shiftId}`)
       if (res.ok) {
         const data = await res.json()
-        const total = data.reduce((sum: number, t: { total: number }) => sum + t.total, 0)
-        setCashSales(total)
+        const successTx = data.filter((t: { status: string }) => t.status === 'SUCCESS')
+        const totalSales = successTx.reduce((sum: number, t: { total_amount: number }) => sum + t.total_amount, 0)
+        const cashOnly = successTx.filter((t: { payment_method: string }) => t.payment_method === 'TUNAI')
+        const cashTotal = cashOnly.reduce((sum: number, t: { total_amount: number }) => sum + t.total_amount, 0)
+
+        // Update shift stats locally
+        setActiveShift(prev => prev ? {
+          ...prev,
+          total_sales: totalSales,
+          total_transactions: successTx.length,
+        } : null)
+        setCashSales(cashTotal)
       }
     } catch (error) {
-      console.error('Error fetching cash sales:', error)
+      console.error('Error fetching shift stats:', error)
     }
   }
 
@@ -255,15 +275,6 @@ export default function ShiftPage() {
               <div className="grid grid-cols-2 gap-3 mb-4">
                 <div className="p-3 bg-white/5 rounded-xl">
                   <div className="flex items-center gap-2 mb-1">
-                    <DollarSign className="w-4 h-4 text-amber-400" />
-                    <span className="text-xs text-white/60">Penjualan</span>
-                  </div>
-                  <p className="text-lg font-black text-white mono">
-                    {formatCurrency(activeShift.total_sales)}
-                  </p>
-                </div>
-                <div className="p-3 bg-white/5 rounded-xl">
-                  <div className="flex items-center gap-2 mb-1">
                     <ShoppingCart className="w-4 h-4 text-blue-400" />
                     <span className="text-xs text-white/60">Transaksi</span>
                   </div>
@@ -271,40 +282,22 @@ export default function ShiftPage() {
                     {activeShift.total_transactions}
                   </p>
                 </div>
+                <div className="p-3 bg-white/5 rounded-xl">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Wallet className="w-4 h-4 text-green-400" />
+                    <span className="text-xs text-white/60">Modal Awal</span>
+                  </div>
+                  <p className="text-lg font-black text-white mono">
+                    {formatCurrency(activeShift.opening_cash || 0)}
+                  </p>
+                </div>
               </div>
 
-              {/* Cash Drawer Info */}
-              <div className="p-4 bg-white/5 rounded-xl mb-4 space-y-2">
-                <div className="flex items-center gap-2 mb-2">
-                  <Wallet className="w-4 h-4 text-green-400" />
-                  <span className="text-xs font-semibold text-white/60 uppercase tracking-wider">
-                    Cash Drawer
-                  </span>
+              {activeShift.opening_notes && (
+                <div className="p-3 bg-white/5 rounded-xl mb-4">
+                  <span className="text-[11px] text-white/40">Catatan: {activeShift.opening_notes}</span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-white/60">Modal Awal</span>
-                  <span className="text-sm font-bold text-white mono">
-                    {formatCurrency(activeShift.opening_cash || 0)}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-white/60">Penjualan Tunai</span>
-                  <span className="text-sm font-bold text-amber-400 mono">
-                    +{formatCurrency(cashSales)}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between pt-2 border-t border-white/10">
-                  <span className="text-xs text-white/80 font-semibold">Estimasi Kas</span>
-                  <span className="text-base font-black text-green-400 mono">
-                    {formatCurrency((activeShift.opening_cash || 0) + cashSales)}
-                  </span>
-                </div>
-                {activeShift.opening_notes && (
-                  <div className="pt-2 border-t border-white/10">
-                    <span className="text-[11px] text-white/40">Catatan: {activeShift.opening_notes}</span>
-                  </div>
-                )}
-              </div>
+              )}
 
               {/* Close Shift Button */}
               <Button
@@ -384,8 +377,6 @@ export default function ShiftPage() {
         isOpen={showCloseDrawer}
         onClose={() => setShowCloseDrawer(false)}
         onConfirm={handleCloseDrawer}
-        openingCash={activeShift?.opening_cash || 0}
-        cashSales={cashSales}
         isLoading={isEnding}
       />
     </div>
