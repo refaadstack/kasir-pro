@@ -46,6 +46,10 @@ export function PaymentModal({ isOpen, onClose, cart, total, onSuccess }: Paymen
     setIsProcessing(true)
 
     try {
+      // Fetch store settings for receipt
+      const settingsRes = await fetch('/api/settings')
+      const storeSettings = settingsRes.ok ? await settingsRes.json() : { store_name: 'KasirPro', store_address: '', store_phone: '', receipt_footer: 'Terima kasih!', paper_width: '58mm' }
+
       const res = await fetch('/api/transactions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -89,8 +93,12 @@ export function PaymentModal({ isOpen, onClose, cart, total, onSuccess }: Paymen
             `<div style="font-size:11px">${item.name}</div><div style="display:flex;justify-content:space-between;padding-left:8px;font-size:11px"><span>${item.qty} x ${item.price.toLocaleString('id-ID')}</span><span>${item.subtotal.toLocaleString('id-ID')}</span></div>`
           ).join('')
 
-          printWindow.document.write(`<html><head><title>Struk</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Courier New',monospace;font-size:12px;width:58mm;padding:4px}.c{text-align:center}.b{font-weight:bold}.l{border-top:1px dashed #000;margin:4px 0}.r{display:flex;justify-content:space-between}@media print{@page{size:58mm auto;margin:0}}</style></head><body>
-            <div class="c"><div class="b" style="font-size:14px">KasirPro</div></div>
+          const paperWidth = storeSettings.paper_width || '58mm'
+          const logoHtml = storeSettings.logo_url ? `<div style="text-align:center;margin-bottom:4px"><img src="${storeSettings.logo_url}" style="height:32px;object-fit:contain" /></div>` : ''
+
+          printWindow.document.write(`<html><head><title>Struk</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Courier New',monospace;font-size:12px;width:${paperWidth};padding:4px}.c{text-align:center}.b{font-weight:bold}.l{border-top:1px dashed #000;margin:4px 0}.r{display:flex;justify-content:space-between}@media print{@page{size:${paperWidth} auto;margin:0}}</style></head><body>
+            ${logoHtml}
+            <div class="c"><div class="b" style="font-size:14px">${storeSettings.store_name || 'KasirPro'}</div>${storeSettings.store_address ? `<div>${storeSettings.store_address}</div>` : ''}${storeSettings.store_phone ? `<div>Telp: ${storeSettings.store_phone}</div>` : ''}</div>
             <div class="l"></div>
             <div class="r"><span>No:</span><span>${receiptData.trx_code}</span></div>
             <div class="r"><span>Tgl:</span><span>${new Date().toLocaleString('id-ID',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})}</span></div>
@@ -101,7 +109,7 @@ export function PaymentModal({ isOpen, onClose, cart, total, onSuccess }: Paymen
             <div class="r"><span>${receiptData.payment_method}</span><span>Rp ${receiptData.cash_received.toLocaleString('id-ID')}</span></div>
             ${receiptData.change_amount > 0 ? `<div class="r"><span>Kembali</span><span>Rp ${receiptData.change_amount.toLocaleString('id-ID')}</span></div>` : ''}
             <div class="l"></div>
-            <div class="c" style="font-size:10px;margin-top:8px">Terima kasih!<br><span style="font-size:9px">Powered by KasirPro</span></div>
+            <div class="c" style="font-size:10px;margin-top:8px">${storeSettings.receipt_footer || 'Terima kasih!'}<br><span style="font-size:9px">Powered by KasirPro</span></div>
             <script>window.onload=function(){window.print();window.close()}</script>
           </body></html>`)
           printWindow.document.close()
