@@ -136,7 +136,7 @@ export default function MorePage() {
       </button>
 
       {/* Version */}
-      <div className="text-center text-xs text-white/20 py-4">
+      <div className="text-center text-xs text-white/20 pb-8">
         KasirPro v2.0 • Manager Dashboard
       </div>
     </div>

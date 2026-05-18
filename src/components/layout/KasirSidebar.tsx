@@ -19,8 +19,8 @@ export function KasirSidebar() {
   const pathname = usePathname()
 
   return (
-    <aside className="hidden md:block w-64 bg-[rgba(13,13,20,0.97)] border-r border-white/10 min-h-[calc(100vh-52px)]">
-      <nav className="p-4 space-y-2">
+    <aside className="hidden md:flex md:flex-col w-64 bg-[rgba(13,13,20,0.97)] border-r border-white/10 h-[calc(100vh-52px)] sticky top-[52px]">
+      <nav className="p-4 space-y-2 flex-1">
         {navItems.map((item) => {
           const Icon = item.icon
           const isActive = pathname === item.href
@@ -45,18 +45,6 @@ export function KasirSidebar() {
           )
         })}
       </nav>
-
-      {/* Version Info */}
-      <div className="absolute bottom-4 left-4 right-4">
-        <div className="p-3 bg-white/5 rounded-xl border border-white/10">
-          <div className="text-xs text-white/40 text-center">
-            KasirPro v2.0
-          </div>
-          <div className="text-[10px] text-white/20 text-center mt-1">
-            Kasir Dashboard
-          </div>
-        </div>
-      </div>
     </aside>
   )
 }
