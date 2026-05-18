@@ -9,7 +9,9 @@ import {
   FileText, 
   Settings,
   Tag,
-  Clock
+  Clock,
+  Activity,
+  Receipt
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -18,8 +20,10 @@ const navItems = [
   { label: 'Produk', href: '/dashboard/superadmin/produk', icon: Package },
   { label: 'Kategori', href: '/dashboard/superadmin/kategori', icon: Tag },
   { label: 'Karyawan', href: '/dashboard/superadmin/karyawan', icon: Users },
+  { label: 'Transaksi', href: '/dashboard/superadmin/transaksi', icon: Receipt },
   { label: 'Shift', href: '/dashboard/superadmin/shift', icon: Clock },
   { label: 'Laporan', href: '/dashboard/superadmin/laporan', icon: FileText },
+  { label: 'Audit Log', href: '/dashboard/superadmin/log', icon: Activity },
   { label: 'Lainnya', href: '/dashboard/superadmin/more', icon: Settings },
 ]
 
