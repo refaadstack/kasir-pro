@@ -21,6 +21,8 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recha
 type DashboardStats = {
   todaySales: number
   todayTransactions: number
+  todayTax: number
+  todayServiceCharge: number
   activeProducts: number
   lowStockProducts: number
   activeShifts: number
@@ -212,6 +214,47 @@ export default function SuperadminDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Tax & Service Charge Summary */}
+      {(stats.todayTax > 0 || stats.todayServiceCharge > 0) && (
+        <div className="grid grid-cols-2 gap-3">
+          <Card className="bg-white/[0.04] border-white/10">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-orange-400/10 rounded-lg">
+                  <DollarSign className="w-5 h-5 text-orange-400" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs text-white/40 font-semibold uppercase tracking-wider">
+                    Pajak Hari Ini
+                  </p>
+                  <p className="text-lg font-black text-orange-400 mono mt-0.5">
+                    {formatCurrency(stats.todayTax)}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white/[0.04] border-white/10">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-cyan-400/10 rounded-lg">
+                  <DollarSign className="w-5 h-5 text-cyan-400" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs text-white/40 font-semibold uppercase tracking-wider">
+                    Service Charge
+                  </p>
+                  <p className="text-lg font-black text-cyan-400 mono mt-0.5">
+                    {formatCurrency(stats.todayServiceCharge)}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Chart */}
       <Card className="bg-white/[0.04] border-white/10">
