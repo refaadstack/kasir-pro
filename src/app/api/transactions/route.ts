@@ -70,7 +70,6 @@ export async function POST(req: NextRequest) {
       product_id: item.productId,
       price_at_sale: item.price,
       qty: item.qty,
-      subtotal: item.subtotal,
     }))
 
     const { error: itemsError } = await supabase
