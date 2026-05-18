@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { getSession } from '@/lib/auth'
 
+export const dynamic = 'force-dynamic'
+
 // POST /api/logs - Create a new audit log entry
 export async function POST(req: NextRequest) {
   try {

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { getSession } from '@/lib/auth'
 
+export const dynamic = 'force-dynamic'
+
 const DEFAULT_SETTINGS = {
   id: 1,
   store_name: 'KasirPro',
