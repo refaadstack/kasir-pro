@@ -81,6 +81,42 @@ export function ProductModal({ isOpen, onClose, onSuccess, product }: ProductMod
     }
   }
 
+  const generateSku = async () => {
+    const selectedCategory = categories.find((c: any) => c.id === formData.categoryId)
+    if (!selectedCategory) {
+      toast({ title: 'Pilih kategori dulu', description: 'Kategori diperlukan untuk generate kode produk', variant: 'destructive' })
+      return
+    }
+
+    // Generate prefix from category name (first 3 chars uppercase)
+    const catName = selectedCategory.name.toUpperCase().replace(/[^A-Z]/g, '')
+    const prefix = catName.slice(0, 3).padEnd(3, 'X')
+
+    // Fetch existing products with same prefix to determine next number
+    try {
+      const res = await fetch('/api/products')
+      if (res.ok) {
+        const products = await res.json()
+        // Find highest number with this prefix
+        let maxNum = 0
+        products.forEach((p: any) => {
+          if (p.sku && p.sku.startsWith(prefix + '-')) {
+            const numPart = parseInt(p.sku.split('-')[1])
+            if (!isNaN(numPart) && numPart > maxNum) {
+              maxNum = numPart
+            }
+          }
+        })
+        const nextNum = String(maxNum + 1).padStart(3, '0')
+        setFormData({ ...formData, sku: `${prefix}-${nextNum}` })
+      }
+    } catch (error) {
+      // Fallback: random
+      const random = String(Math.floor(Math.random() * 999) + 1).padStart(3, '0')
+      setFormData({ ...formData, sku: `${prefix}-${random}` })
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
@@ -175,19 +211,50 @@ export function ProductModal({ isOpen, onClose, onSuccess, product }: ProductMod
             />
           </div>
 
+          {/* Category */}
+          <div>
+            <label className="block text-xs font-semibold text-white/60 mb-2 uppercase tracking-wider">
+              Kategori
+            </label>
+            <select
+              value={formData.categoryId}
+              onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm"
+            >
+              <option value="">Pilih Kategori</option>
+              {categories.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
           {/* SKU */}
           <div>
             <label className="block text-xs font-semibold text-white/60 mb-2 uppercase tracking-wider">
-              SKU *
+              Kode Produk (SKU) *
             </label>
-            <Input
-              type="text"
-              value={formData.sku}
-              onChange={(e) => setFormData({ ...formData, sku: e.target.value.toUpperCase() })}
-              placeholder="MKN-001"
-              className="bg-white/5 border-white/10 text-white mono"
-              required
-            />
+            <div className="flex gap-2">
+              <Input
+                type="text"
+                value={formData.sku}
+                onChange={(e) => setFormData({ ...formData, sku: e.target.value.toUpperCase() })}
+                placeholder="MKN-001"
+                className="bg-white/5 border-white/10 text-white mono flex-1"
+                required
+              />
+              {!product && (
+                <button
+                  type="button"
+                  onClick={generateSku}
+                  className="px-3 py-2 bg-amber-400/10 hover:bg-amber-400/20 border border-amber-400/30 rounded-lg text-xs font-semibold text-amber-400 whitespace-nowrap transition-all"
+                >
+                  Generate
+                </button>
+              )}
+            </div>
+            <p className="text-[11px] text-white/40 mt-1">Pilih kategori dulu lalu klik Generate, atau isi manual</p>
           </div>
 
           {/* Price & Stock */}
@@ -238,25 +305,6 @@ export function ProductModal({ isOpen, onClose, onSuccess, product }: ProductMod
               step="0.1"
             />
             <p className="text-[11px] text-white/40 mt-1">Set 0 jika produk tidak kena pajak</p>
-          </div>
-
-          {/* Category */}
-          <div>
-            <label className="block text-xs font-semibold text-white/60 mb-2 uppercase tracking-wider">
-              Kategori
-            </label>
-            <select
-              value={formData.categoryId}
-              onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm"
-            >
-              <option value="">Pilih Kategori</option>
-              {categories.map((cat) => (
-                <option key={cat.id} value={cat.id}>
-                  {cat.name}
-                </option>
-              ))}
-            </select>
           </div>
 
           {/* Active Status */}

@@ -24,26 +24,35 @@ export async function POST(req: NextRequest) {
     const validated = schema.parse(body)
 
     // Verify PIN belongs to a MANAGER or SUPERADMIN
-    const { data: approver } = await supabase
+    // PIN must be unique per user - if somehow duplicates exist, reject to avoid ambiguity
+    const { data: approvers } = await supabase
       .from('users')
       .select('id, name, role')
       .eq('pin', validated.pin)
       .in('role', ['MANAGER', 'SUPERADMIN'])
       .eq('is_active', true)
-      .maybeSingle()
 
-    if (!approver) {
+    if (!approvers || approvers.length === 0) {
       return NextResponse.json(
         { error: 'PIN tidak valid. Hanya PIN Manager atau Admin yang dapat meng-approve void.' },
         { status: 403 }
       )
     }
 
-    // Log the void action
+    if (approvers.length > 1) {
+      return NextResponse.json(
+        { error: 'PIN ambigu — lebih dari satu akun memiliki PIN ini. Hubungi admin untuk mengubah PIN agar unik.' },
+        { status: 409 }
+      )
+    }
+
+    const approver = approvers[0]
+
+    // Log the void action - logged under the approver (manager/admin who granted it)
     const { error: logError } = await supabase.from('audit_logs').insert({
-      user_id: session.id,
+      user_id: approver.id,
       action: 'VOID_ITEM',
-      detail: `Void item: ${validated.itemName} (${validated.itemQty}x @ Rp ${validated.itemPrice.toLocaleString('id-ID')}). Alasan: ${validated.reason}. Approved by: ${approver.name} (${approver.role})`,
+      detail: `Void item: ${validated.itemName} (${validated.itemQty}x @ Rp ${validated.itemPrice.toLocaleString('id-ID')}). Alasan: ${validated.reason}. Kasir: ${session.name || session.id}`,
     })
 
     if (logError) {

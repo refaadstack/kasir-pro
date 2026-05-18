@@ -43,3 +43,9 @@ COMMENT ON COLUMN store_settings.trx_code_format IS 'Format for generating trans
 
 -- Update existing transactions to have subtotal_amount = total_amount (backward compat)
 UPDATE transactions SET subtotal_amount = total_amount WHERE subtotal_amount = 0 OR subtotal_amount IS NULL;
+
+
+-- Make PIN unique across all users (required for void approval to be unambiguous)
+-- First check if there are duplicate PINs and resolve them before running this
+-- SELECT pin, COUNT(*) FROM users GROUP BY pin HAVING COUNT(*) > 1;
+ALTER TABLE users ADD CONSTRAINT users_pin_unique UNIQUE (pin);

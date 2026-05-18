@@ -69,6 +69,20 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    // Cek PIN duplikat (PIN harus unique agar void approval tidak ambigu)
+    const { data: pinExists } = await supabase
+      .from('users')
+      .select('id')
+      .eq('pin', pin)
+      .maybeSingle()
+
+    if (pinExists) {
+      return NextResponse.json(
+        { error: 'PIN sudah digunakan oleh user lain. Gunakan PIN yang berbeda.' },
+        { status: 400 }
+      )
+    }
+
     const { data: user, error } = await supabase
       .from('users')
       .insert([{

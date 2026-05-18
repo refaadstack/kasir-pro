@@ -32,6 +32,23 @@ export async function PATCH(
       }
     }
 
+    // Cek PIN duplikat (kecuali user ini sendiri)
+    if (pin && pin.length === 4) {
+      const { data: pinExists } = await supabase
+        .from('users')
+        .select('id')
+        .eq('pin', pin)
+        .neq('id', params.id)
+        .maybeSingle()
+
+      if (pinExists) {
+        return NextResponse.json(
+          { error: 'PIN sudah digunakan oleh user lain. Gunakan PIN yang berbeda.' },
+          { status: 400 }
+        )
+      }
+    }
+
     const updateData: any = {}
     if (name !== undefined) updateData.name = name
     if (email !== undefined) updateData.email = email
