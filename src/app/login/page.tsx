@@ -12,6 +12,7 @@ export default async function LoginPage({
 
   // Redirect jika sudah login
   if (session) {
+    if (session.isPlatformAdmin) redirect('/dashboard/platform')
     const redirectMap: Record<string, string> = {
       KASIR: '/dashboard/kasir',
       MANAGER: '/dashboard/manager',

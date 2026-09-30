@@ -13,6 +13,7 @@ export type JWTPayload = {
   role: 'KASIR' | 'MANAGER' | 'SUPERADMIN'
   tenantId: string | null
   plan: 'TRIAL' | 'PREMIUM'
+  isPlatformAdmin: boolean
 }
 
 export async function signToken(payload: JWTPayload): Promise<string> {

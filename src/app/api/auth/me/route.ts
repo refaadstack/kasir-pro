@@ -22,6 +22,7 @@ export async function GET() {
       name: session.name,
       email: session.email,
       role: session.role,
+      isPlatformAdmin: session.isPlatformAdmin,
       tenantId: session.tenantId,
       plan: tenant?.plan || session.plan,
       tenant: tenant

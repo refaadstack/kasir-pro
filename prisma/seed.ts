@@ -112,10 +112,25 @@ async function main() {
     })
   }
 
+  await prisma.user.upsert({
+    where: { email: 'admin@refaadstack.com' },
+    update: { isPlatformAdmin: true, emailVerifiedAt: new Date() },
+    create: {
+      name: 'Platform Admin',
+      email: 'admin@refaadstack.com',
+      pin: '9999',
+      role: 'SUPERADMIN',
+      isActive: true,
+      isPlatformAdmin: true,
+      emailVerifiedAt: new Date(),
+    },
+  })
+
   console.log('✅ Seed selesai')
   console.log('   owner@kasirpro.com / PIN 1234')
   console.log('   manager@kasirpro.com / PIN 2345')
   console.log('   kasir@kasirpro.com / PIN 3456')
+  console.log('   admin@refaadstack.com / PIN 9999 (platform admin)')
 }
 
 main()

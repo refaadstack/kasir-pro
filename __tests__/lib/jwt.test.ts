@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll } from 'vitest'
 import { signToken, verifyToken } from '@/lib/jwt'
 
-const base = { tenantId: 'tenant-1', plan: 'TRIAL' as const }
+const base = { tenantId: 'tenant-1', plan: 'TRIAL' as const, isPlatformAdmin: false }
 
 describe('JWT Functions', () => {
   let validToken: string

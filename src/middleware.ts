@@ -8,7 +8,8 @@ const ROLE_ROUTES: Record<string, string[]> = {
   '/dashboard/superadmin': ['SUPERADMIN'],
 }
 
-function roleToDashboard(role: string) {
+function roleToDashboard(role: string, isPlatformAdmin = false) {
+  if (isPlatformAdmin) return '/dashboard/platform'
   if (role === 'SUPERADMIN') return '/dashboard/superadmin'
   if (role === 'MANAGER') return '/dashboard/manager'
   return '/dashboard/kasir'
@@ -25,7 +26,7 @@ export async function middleware(req: NextRequest) {
   if (pathname === '/login') {
     if (token) {
       const payload = await verifyToken(token)
-      if (payload) return NextResponse.redirect(new URL(roleToDashboard(payload.role), req.url))
+      if (payload) return NextResponse.redirect(new URL(roleToDashboard(payload.role, payload.isPlatformAdmin), req.url))
     }
     return NextResponse.next()
   }
@@ -35,6 +36,13 @@ export async function middleware(req: NextRequest) {
 
     const payload = await verifyToken(token)
     if (!payload) return NextResponse.redirect(new URL('/login', req.url))
+
+    if (pathname.startsWith('/dashboard/platform')) {
+      if (!payload.isPlatformAdmin) {
+        return NextResponse.redirect(new URL('/unauthorized', req.url))
+      }
+      return NextResponse.next()
+    }
 
     const matchedRoute = Object.keys(ROLE_ROUTES).find(r => pathname.startsWith(r))
     if (matchedRoute && !ROLE_ROUTES[matchedRoute].includes(payload.role)) {

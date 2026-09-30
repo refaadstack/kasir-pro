@@ -56,6 +56,7 @@ export async function POST(req: NextRequest) {
       role: user.role,
       tenantId: user.tenantId,
       plan: tenant?.plan || 'TRIAL',
+      isPlatformAdmin: user.isPlatformAdmin,
     })
 
     const redirectMap: Record<string, string> = {
@@ -64,10 +65,14 @@ export async function POST(req: NextRequest) {
       SUPERADMIN: '/dashboard/superadmin',
     }
 
+    const redirectTo = user.isPlatformAdmin
+      ? '/dashboard/platform'
+      : redirectMap[user.role] || '/dashboard/kasir'
+
     const response = NextResponse.json({
       role: user.role,
       name: user.name,
-      redirectTo: redirectMap[user.role] || '/dashboard/kasir',
+      redirectTo,
     })
 
     response.cookies.set(COOKIE_NAME, token, {

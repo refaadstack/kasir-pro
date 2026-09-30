@@ -2,8 +2,9 @@ FROM node:20-bookworm-slim AS builder
 WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 COPY package.json package-lock.json ./
+RUN npm ci --ignore-scripts
 COPY prisma ./prisma
-RUN npm ci
+RUN npx prisma generate
 COPY . .
 ENV JWT_SECRET=build-time-placeholder-not-used-at-runtime
 ENV DATABASE_URL=mysql://build:build@localhost:3306/build

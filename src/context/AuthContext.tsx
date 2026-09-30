@@ -17,6 +17,7 @@ type User = {
   name: string
   email: string
   role: 'KASIR' | 'MANAGER' | 'SUPERADMIN'
+  isPlatformAdmin: boolean
   tenantId: string | null
   plan: 'TRIAL' | 'PREMIUM'
   tenant: Tenant | null
