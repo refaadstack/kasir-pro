@@ -3,11 +3,23 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
+type Tenant = {
+  id: string
+  name: string
+  plan: 'TRIAL' | 'PREMIUM'
+  status: 'trialing' | 'active' | 'past_due' | 'expired'
+  trialEndsAt: string | null
+  currentPeriodEnd: string | null
+}
+
 type User = {
   id: string
   name: string
   email: string
   role: 'KASIR' | 'MANAGER' | 'SUPERADMIN'
+  tenantId: string | null
+  plan: 'TRIAL' | 'PREMIUM'
+  tenant: Tenant | null
 }
 
 type AuthContextType = {
@@ -28,8 +40,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const res = await fetch('/api/auth/me')
       if (res.ok) {
-        const data = await res.json()
-        setUser(data)
+        setUser(await res.json())
       } else {
         setUser(null)
       }

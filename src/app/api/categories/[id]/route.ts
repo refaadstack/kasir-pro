@@ -1,16 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
-import { getSession } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
+import { requireTenant } from '@/lib/tenant'
 
-// PATCH /api/categories/[id] - Update category
-export async function PATCH(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const session = await getSession()
-    if (!session || !['SUPERADMIN', 'MANAGER'].includes(session.role)) {
+    const ctx = await requireTenant()
+    if (!ctx || !['SUPERADMIN', 'MANAGER'].includes(ctx.session.role)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+    }
+
+    const existing = await prisma.category.findFirst({
+      where: { id: params.id, tenantId: ctx.tenant.id },
+    })
+    if (!existing) {
+      return NextResponse.json({ error: 'Kategori tidak ditemukan' }, { status: 404 })
     }
 
     const body = await req.json()
@@ -20,72 +23,57 @@ export async function PATCH(
       return NextResponse.json({ error: 'Nama kategori harus diisi' }, { status: 400 })
     }
 
-    const { data, error } = await supabase
-      .from('categories')
-      .update({ name: name.trim() })
-      .eq('id', params.id)
-      .select()
-      .single()
+    const data = await prisma.category.update({
+      where: { id: params.id },
+      data: { name: name.trim() },
+    })
 
-    if (error) throw error
-
-    // Log activity
-    await supabase.from('audit_logs').insert({
-      user_id: session.id,
-      action: 'UPDATE_CATEGORY',
-      detail: `Kategori diupdate menjadi "${name}"`,
+    await prisma.auditLog.create({
+      data: {
+        userId: ctx.session.id,
+        action: 'UPDATE_CATEGORY',
+        detail: `Kategori diupdate menjadi "${name}"`,
+        tenantId: ctx.tenant.id,
+      },
     })
 
     return NextResponse.json(data)
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error updating category:', error)
-    return NextResponse.json(
-      { error: error.message || 'Gagal mengupdate kategori' },
-      { status: 500 }
-    )
+    const message = error instanceof Error ? error.message : 'Gagal mengupdate kategori'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }
 
-// DELETE /api/categories/[id] - Delete category
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const session = await getSession()
-    if (!session || !['SUPERADMIN', 'MANAGER'].includes(session.role)) {
+    const ctx = await requireTenant()
+    if (!ctx || !['SUPERADMIN', 'MANAGER'].includes(ctx.session.role)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
     }
 
-    // Get category name before deleting
-    const { data: category } = await supabase
-      .from('categories')
-      .select('name')
-      .eq('id', params.id)
-      .single()
-
-    const { error } = await supabase
-      .from('categories')
-      .delete()
-      .eq('id', params.id)
-
-    if (error) throw error
-
-    // Log activity
-    if (category) {
-      await supabase.from('audit_logs').insert({
-        user_id: session.id,
-        action: 'DELETE_CATEGORY',
-        detail: `Kategori "${category.name}" dihapus`,
-      })
+    const category = await prisma.category.findFirst({
+      where: { id: params.id, tenantId: ctx.tenant.id },
+    })
+    if (!category) {
+      return NextResponse.json({ error: 'Kategori tidak ditemukan' }, { status: 404 })
     }
 
+    await prisma.category.delete({ where: { id: params.id } })
+
+    await prisma.auditLog.create({
+      data: {
+        userId: ctx.session.id,
+        action: 'DELETE_CATEGORY',
+        detail: `Kategori "${category.name}" dihapus`,
+        tenantId: ctx.tenant.id,
+      },
+    })
+
     return NextResponse.json({ success: true })
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error deleting category:', error)
-    return NextResponse.json(
-      { error: error.message || 'Gagal menghapus kategori' },
-      { status: 500 }
-    )
+    const message = error instanceof Error ? error.message : 'Gagal menghapus kategori'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }

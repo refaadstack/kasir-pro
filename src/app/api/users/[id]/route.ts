@@ -1,46 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
-import { getSession } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
+import { requireTenant } from '@/lib/tenant'
 
-export async function PATCH(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const session = await getSession()
-    if (!session || session.role !== 'SUPERADMIN') {
+    const ctx = await requireTenant()
+    if (!ctx || ctx.session.role !== 'SUPERADMIN') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const target = await prisma.user.findFirst({
+      where: { id: params.id, tenantId: ctx.tenant.id },
+    })
+    if (!target) {
+      return NextResponse.json({ error: 'User tidak ditemukan' }, { status: 404 })
     }
 
     const body = await req.json()
     const { name, email, pin, role, phone, isActive } = body
 
-    // Cek email duplikat (kecuali user ini sendiri)
     if (email) {
-      const { data: existing } = await supabase
-        .from('users')
-        .select('id')
-        .eq('email', email)
-        .neq('id', params.id)
-        .single()
-
+      const existing = await prisma.user.findFirst({
+        where: { email, id: { not: params.id } },
+      })
       if (existing) {
-        return NextResponse.json(
-          { error: 'Email sudah digunakan' },
-          { status: 400 }
-        )
+        return NextResponse.json({ error: 'Email sudah digunakan' }, { status: 400 })
       }
     }
 
-    // Cek PIN duplikat (kecuali user ini sendiri)
     if (pin && pin.length === 4) {
-      const { data: pinExists } = await supabase
-        .from('users')
-        .select('id')
-        .eq('pin', pin)
-        .neq('id', params.id)
-        .maybeSingle()
-
+      const pinExists = await prisma.user.findFirst({
+        where: { tenantId: ctx.tenant.id, pin, id: { not: params.id } },
+      })
       if (pinExists) {
         return NextResponse.json(
           { error: 'PIN sudah digunakan oleh user lain. Gunakan PIN yang berbeda.' },
@@ -49,64 +40,46 @@ export async function PATCH(
       }
     }
 
-    const updateData: any = {}
+    const updateData: Record<string, unknown> = {}
     if (name !== undefined) updateData.name = name
     if (email !== undefined) updateData.email = email
     if (pin && pin.length === 4) updateData.pin = pin
     if (role !== undefined) updateData.role = role
     if (phone !== undefined) updateData.phone = phone || null
-    if (isActive !== undefined) updateData.is_active = isActive
+    if (isActive !== undefined) updateData.isActive = isActive
 
-    const { data: user, error } = await supabase
-      .from('users')
-      .update(updateData)
-      .eq('id', params.id)
-      .select()
-      .single()
-
-    if (error) throw error
+    const user = await prisma.user.update({ where: { id: params.id }, data: updateData })
 
     return NextResponse.json(user)
   } catch (error) {
     console.error('Error updating user:', error)
-    return NextResponse.json(
-      { error: 'Gagal mengupdate user' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Gagal mengupdate user' }, { status: 500 })
   }
 }
 
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const session = await getSession()
-    if (!session || session.role !== 'SUPERADMIN') {
+    const ctx = await requireTenant()
+    if (!ctx || ctx.session.role !== 'SUPERADMIN') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Tidak bisa hapus diri sendiri
-    if (session.id === params.id) {
-      return NextResponse.json(
-        { error: 'Tidak dapat menghapus akun sendiri' },
-        { status: 400 }
-      )
+    if (ctx.session.id === params.id) {
+      return NextResponse.json({ error: 'Tidak dapat menghapus akun sendiri' }, { status: 400 })
     }
 
-    const { error } = await supabase
-      .from('users')
-      .delete()
-      .eq('id', params.id)
+    const target = await prisma.user.findFirst({
+      where: { id: params.id, tenantId: ctx.tenant.id },
+    })
+    if (!target) {
+      return NextResponse.json({ error: 'User tidak ditemukan' }, { status: 404 })
+    }
 
-    if (error) throw error
+    await prisma.user.delete({ where: { id: params.id } })
 
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Error deleting user:', error)
-    return NextResponse.json(
-      { error: 'Gagal menghapus user' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Gagal menghapus user' }, { status: 500 })
   }
 }

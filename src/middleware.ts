@@ -42,9 +42,9 @@ export async function middleware(req: NextRequest) {
     }
 
     const res = NextResponse.next()
-    res.headers.set('x-user-id',   payload.id)
+    res.headers.set('x-user-id', payload.id)
     res.headers.set('x-user-role', payload.role)
-    res.headers.set('x-user-name', payload.name)
+    res.headers.set('x-user-name', payload.name ?? '')
     return res
   }
 

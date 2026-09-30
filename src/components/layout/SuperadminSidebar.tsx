@@ -11,7 +11,8 @@ import {
   Tag,
   Clock,
   Activity,
-  Receipt
+  Receipt,
+  CreditCard
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -24,6 +25,7 @@ const navItems = [
   { label: 'Shift', href: '/dashboard/superadmin/shift', icon: Clock },
   { label: 'Laporan', href: '/dashboard/superadmin/laporan', icon: FileText },
   { label: 'Audit Log', href: '/dashboard/superadmin/log', icon: Activity },
+  { label: 'Langganan', href: '/dashboard/superadmin/langganan', icon: CreditCard },
   { label: 'Lainnya', href: '/dashboard/superadmin/more', icon: Settings },
 ]
 

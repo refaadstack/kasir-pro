@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import bcrypt from 'bcryptjs'
-import { supabase } from '@/lib/supabase'
+import { prisma } from '@/lib/prisma'
 import { signToken } from '@/lib/jwt'
 import { COOKIE_NAME } from '@/lib/auth'
 
@@ -16,65 +16,48 @@ export async function POST(req: NextRequest) {
     const validation = loginSchema.safeParse(body)
 
     if (!validation.success) {
-      return NextResponse.json(
-        { error: validation.error.issues[0].message },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: validation.error.issues[0].message }, { status: 400 })
     }
 
     const { email, pin } = validation.data
 
-    // Query user dari database
-    const { data: user, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('email', email)
-      .eq('is_active', true)
-      .single()
+    const user = await prisma.user.findFirst({
+      where: { email, isActive: true },
+      include: { tenant: true },
+    })
 
-    if (error || !user) {
-      return NextResponse.json(
-        { error: 'Email atau PIN salah' },
-        { status: 401 }
-      )
+    if (!user || !user.pin) {
+      return NextResponse.json({ error: 'Email atau PIN salah' }, { status: 401 })
     }
 
-    // Cek PIN - support plain text dan bcrypt hash
     let pinValid = false
-    
     if (user.pin.startsWith('$2b$') || user.pin.startsWith('$2a$')) {
-      // PIN di-hash dengan bcrypt
       pinValid = await bcrypt.compare(pin, user.pin)
     } else {
-      // PIN plain text
       pinValid = user.pin === pin
     }
 
     if (!pinValid) {
+      return NextResponse.json({ error: 'Email atau PIN salah' }, { status: 401 })
+    }
+
+    if (user.emailVerifiedAt === null && user.tenantId === null) {
       return NextResponse.json(
-        { error: 'Email atau PIN salah' },
-        { status: 401 }
+        { error: 'Email belum diverifikasi. Cek inbox untuk link verifikasi.' },
+        { status: 403 }
       )
     }
 
-    // Sign JWT token
-    let token: string
-    try {
-      token = await signToken({
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-      })
-    } catch (error) {
-      console.error('JWT signing error:', error)
-      return NextResponse.json(
-        { error: 'Gagal membuat token autentikasi. Hubungi administrator.' },
-        { status: 500 }
-      )
-    }
+    const tenant = user.tenant
+    const token = await signToken({
+      id: user.id,
+      name: user.name || '',
+      email: user.email,
+      role: user.role,
+      tenantId: user.tenantId,
+      plan: tenant?.plan || 'TRIAL',
+    })
 
-    // Tentukan redirect berdasarkan role
     const redirectMap: Record<string, string> = {
       KASIR: '/dashboard/kasir',
       MANAGER: '/dashboard/manager',
@@ -87,21 +70,17 @@ export async function POST(req: NextRequest) {
       redirectTo: redirectMap[user.role] || '/dashboard/kasir',
     })
 
-    // Set cookie HttpOnly
     response.cookies.set(COOKIE_NAME, token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production', // HTTPS only in production
+      secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 60 * 60 * 8, // 8 jam
+      maxAge: 60 * 60 * 8,
       path: '/',
     })
 
     return response
   } catch (error) {
     console.error('Login error:', error)
-    return NextResponse.json(
-      { error: 'Terjadi kesalahan server' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Terjadi kesalahan server' }, { status: 500 })
   }
 }

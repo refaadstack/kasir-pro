@@ -1,0 +1,19 @@
+services:
+  app:
+    build: .
+    image: kasirpro:latest
+    container_name: kasirpro-app
+    restart: unless-stopped
+    ports:
+      - "3011:3000"
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_APP_URL: https://kasirpro.refaadstack.com
+    networks:
+      - infra_default
+
+networks:
+  infra_default:
+    external: true

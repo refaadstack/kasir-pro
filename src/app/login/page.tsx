@@ -1,8 +1,13 @@
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import { getSession } from '@/lib/auth'
 import LoginForm from './LoginForm'
 
-export default async function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: { verified?: string; error?: string }
+}) {
   const session = await getSession()
 
   // Redirect jika sudah login
@@ -34,7 +39,27 @@ export default async function LoginPage() {
           <p className="text-white/40 text-sm mt-1">Sistem Point of Sale</p>
         </div>
 
+        {searchParams.verified && (
+          <div className="mb-4 px-4 py-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-sm text-center">
+            Email terverifikasi. Silakan login.
+          </div>
+        )}
+        {searchParams.error && (
+          <div className="mb-4 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-sm text-center">
+            {searchParams.error === 'expired'
+              ? 'Link verifikasi kedaluwarsa. Minta link baru.'
+              : 'Link verifikasi tidak valid.'}
+          </div>
+        )}
+
         <LoginForm />
+
+        <p className="text-center text-sm text-white/40 mt-5">
+          Belum punya akun?{' '}
+          <Link href="/register" className="text-amber-400 hover:underline">
+            Daftar gratis
+          </Link>
+        </p>
       </div>
     </div>
   )

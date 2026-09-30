@@ -3,6 +3,7 @@ import { getSession } from '@/lib/auth'
 import { Navbar } from '@/components/layout/Navbar'
 import { SuperadminBottomNav } from '@/components/layout/SuperadminBottomNav'
 import { SuperadminSidebar } from '@/components/layout/SuperadminSidebar'
+import { TrialBanner } from '@/components/layout/TrialBanner'
 
 export default async function SuperadminLayout({
   children,
@@ -18,6 +19,7 @@ export default async function SuperadminLayout({
   return (
     <div className="min-h-screen bg-app flex flex-col">
       <Navbar />
+      <TrialBanner />
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar for desktop */}
         <SuperadminSidebar />

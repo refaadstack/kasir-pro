@@ -21,11 +21,12 @@ A SaaS POS where UMKM owners can:
 ## Tech Stack
 - **Next.js 14 (App Router)** — framework
 - **TypeScript** — type-safe development
-- **Supabase (PostgreSQL)** — database
+- **MySQL + Prisma ORM** — database (self-hosted)
 - **Tailwind CSS + shadcn/ui** — styling
 - **JWT with HttpOnly Cookies** — authentication
+- **Midtrans via refaadstack payment-service** — subscription billing
 - **Vitest + React Testing Library** — testing
-- **GitHub Actions** — CI/CD
+- **Docker + Cloudflare Tunnel** — deployment
 
 ## Project Status
 
@@ -56,8 +57,14 @@ A SaaS POS where UMKM owners can:
 npm install
 
 # Setup environment variables
-cp .env.example .env.local
-# Edit .env.local dengan credentials Supabase Anda
+cp .env.example .env
+# Isi DATABASE_URL (MySQL), JWT_SECRET, PAYMENT_*, CLOUDMAIL_*
+
+# Sinkronkan schema ke database
+npm run db:push
+
+# Seed data demo
+npm run seed
 
 # Run development server
 npm run dev

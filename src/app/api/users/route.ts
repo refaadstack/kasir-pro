@@ -1,83 +1,60 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
-import { getSession } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
+import { requireTenant, canAddUser } from '@/lib/tenant'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
   try {
-    const session = await getSession()
-    if (!session || !['SUPERADMIN', 'MANAGER'].includes(session.role)) {
+    const ctx = await requireTenant()
+    if (!ctx || !['SUPERADMIN', 'MANAGER'].includes(ctx.session.role)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { data: users, error } = await supabase
-      .from('users')
-      .select('id, name, email, role, phone, is_active')
-      .order('created_at', { ascending: false })
+    const users = await prisma.user.findMany({
+      where: { tenantId: ctx.tenant.id },
+      select: { id: true, name: true, email: true, role: true, phone: true, isActive: true },
+      orderBy: { createdAt: 'desc' },
+    })
 
-    if (error) throw error
-
-    const transformedUsers = users?.map(u => ({
-      ...u,
-      isActive: u.is_active,
-    }))
-
-    return NextResponse.json(transformedUsers || [])
+    return NextResponse.json(users)
   } catch (error) {
     console.error('Error fetching users:', error)
-    return NextResponse.json(
-      { error: 'Gagal memuat users' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Gagal memuat users' }, { status: 500 })
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getSession()
-    if (!session || session.role !== 'SUPERADMIN') {
+    const ctx = await requireTenant()
+    if (!ctx || ctx.session.role !== 'SUPERADMIN') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const gate = await canAddUser(ctx.tenant)
+    if (!gate.ok) {
+      return NextResponse.json({ error: gate.message }, { status: 403 })
     }
 
     const body = await req.json()
     const { name, email, pin, role, phone, isActive } = body
 
     if (!name || !email || !pin || !role) {
-      return NextResponse.json(
-        { error: 'Data tidak lengkap' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Data tidak lengkap' }, { status: 400 })
     }
 
     if (pin.length !== 4) {
-      return NextResponse.json(
-        { error: 'PIN harus 4 digit' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'PIN harus 4 digit' }, { status: 400 })
     }
 
-    // Cek email duplikat
-    const { data: existing } = await supabase
-      .from('users')
-      .select('id')
-      .eq('email', email)
-      .single()
-
-    if (existing) {
-      return NextResponse.json(
-        { error: 'Email sudah digunakan' },
-        { status: 400 }
-      )
+    const emailExists = await prisma.user.findUnique({ where: { email } })
+    if (emailExists) {
+      return NextResponse.json({ error: 'Email sudah digunakan' }, { status: 400 })
     }
 
-    // Cek PIN duplikat (PIN harus unique agar void approval tidak ambigu)
-    const { data: pinExists } = await supabase
-      .from('users')
-      .select('id')
-      .eq('pin', pin)
-      .maybeSingle()
-
+    const pinExists = await prisma.user.findFirst({
+      where: { tenantId: ctx.tenant.id, pin },
+    })
     if (pinExists) {
       return NextResponse.json(
         { error: 'PIN sudah digunakan oleh user lain. Gunakan PIN yang berbeda.' },
@@ -85,27 +62,22 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const { data: user, error } = await supabase
-      .from('users')
-      .insert([{
+    const user = await prisma.user.create({
+      data: {
         name,
         email,
-        pin, // Plain text PIN
+        pin,
         role,
         phone: phone || null,
-        is_active: isActive !== false,
-      }])
-      .select()
-      .single()
-
-    if (error) throw error
+        isActive: isActive !== false,
+        tenantId: ctx.tenant.id,
+        emailVerifiedAt: new Date(),
+      },
+    })
 
     return NextResponse.json(user, { status: 201 })
   } catch (error) {
     console.error('Error creating user:', error)
-    return NextResponse.json(
-      { error: 'Gagal membuat user' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Gagal membuat user' }, { status: 500 })
   }
 }

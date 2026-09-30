@@ -1,0 +1,268 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUPERADMIN
+  MANAGER
+  KASIR
+}
+
+enum PaymentMethod {
+  TUNAI
+  QRIS
+  TRANSFER
+}
+
+enum TransactionStatus {
+  SUCCESS
+  VOID
+}
+
+enum Plan {
+  TRIAL
+  PREMIUM
+}
+
+enum TenantStatus {
+  trialing
+  active
+  past_due
+  expired
+}
+
+enum InvoiceStatus {
+  pending
+  paid
+  failed
+  expired
+}
+
+model Tenant {
+  id               String       @id @default(uuid()) @db.VarChar(36)
+  name             String
+  slug             String       @unique
+  ownerId          String       @map("owner_id") @db.VarChar(36)
+  plan             Plan         @default(TRIAL)
+  status           TenantStatus @default(trialing)
+  trialEndsAt      DateTime?    @map("trial_ends_at")
+  currentPeriodEnd DateTime?    @map("current_period_end")
+  createdAt        DateTime     @default(now()) @map("created_at")
+  updatedAt        DateTime     @updatedAt @map("updated_at")
+
+  users          User[]
+  categories     Category[]
+  products       Product[]
+  shifts         Shift[]
+  transactions   Transaction[]
+  transactionItems TransactionItem[]
+  auditLogs      AuditLog[]
+  invoices       Invoice[]
+
+  @@map("tenants")
+}
+
+model User {
+  id              String    @id @default(uuid()) @db.VarChar(36)
+  name            String?
+  email           String    @unique
+  pin             String?
+  role            Role      @default(KASIR)
+  phone           String?
+  isActive        Boolean   @default(true) @map("is_active")
+  tenantId        String?   @map("tenant_id") @db.VarChar(36)
+  emailVerifiedAt DateTime? @map("email_verified_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, pin])
+  @@index([tenantId])
+  @@map("users")
+}
+
+model Category {
+  id        String   @id @default(uuid()) @db.VarChar(36)
+  name      String
+  emoji     String   @default("📦")
+  tenantId  String   @map("tenant_id") @db.VarChar(36)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  products Product[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@map("categories")
+}
+
+model Product {
+  id         String   @id @default(uuid()) @db.VarChar(36)
+  name       String
+  sku        String
+  price      Float    @default(0)
+  stock      Int      @default(0)
+  categoryId String?  @map("category_id") @db.VarChar(36)
+  imageUrl   String?  @map("image_url")
+  emoji      String   @default("📦")
+  isActive   Boolean  @default(true) @map("is_active")
+  taxPercent Float    @default(0) @map("tax_percent")
+  tenantId   String   @map("tenant_id") @db.VarChar(36)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, sku])
+  @@index([tenantId])
+  @@map("products")
+}
+
+model Shift {
+  id                String    @id @default(uuid()) @db.VarChar(36)
+  shiftCode         String    @unique @map("shift_code")
+  userId            String    @map("user_id") @db.VarChar(36)
+  startTime         DateTime  @default(now()) @map("start_time")
+  endTime           DateTime? @map("end_time")
+  openingCash       Float?    @map("opening_cash")
+  openingNotes      String?   @map("opening_notes")
+  closingCash       Float?    @map("closing_cash")
+  closingNotes      String?   @map("closing_notes")
+  totalSales        Float     @default(0) @map("total_sales")
+  totalTransactions Int       @default(0) @map("total_transactions")
+  expectedCash      Float?    @map("expected_cash")
+  cashDifference    Float?    @map("cash_difference")
+  tenantId          String    @map("tenant_id") @db.VarChar(36)
+  createdAt         DateTime  @default(now()) @map("created_at")
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  @@index([tenantId])
+  @@map("shifts")
+}
+
+model Transaction {
+  id                  String            @id @default(uuid()) @db.VarChar(36)
+  trxCode             String            @unique @map("trx_code")
+  userId              String            @map("user_id") @db.VarChar(36)
+  shiftId             String?           @map("shift_id") @db.VarChar(36)
+  totalAmount         Float             @map("total_amount")
+  subtotalAmount      Float             @default(0) @map("subtotal_amount")
+  taxAmount           Float             @default(0) @map("tax_amount")
+  serviceChargeAmount Float             @default(0) @map("service_charge_amount")
+  discountAmount      Float             @default(0) @map("discount_amount")
+  discountCode        String?           @map("discount_code")
+  discountLabel       String?           @map("discount_label")
+  edcCode             String?           @map("edc_code")
+  paymentMethod       PaymentMethod     @map("payment_method")
+  cashReceived        Float?            @map("cash_received")
+  changeAmount        Float?            @map("change_amount")
+  status              TransactionStatus @default(SUCCESS)
+  voidReason          String?           @map("void_reason")
+  voidBy              String?           @map("void_by") @db.VarChar(36)
+  voidAt              DateTime?         @map("void_at")
+  tenantId            String            @map("tenant_id") @db.VarChar(36)
+  createdAt           DateTime          @default(now()) @map("created_at")
+
+  tenant Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  shift  Shift?            @relation(fields: [shiftId], references: [id], onDelete: SetNull)
+  items  TransactionItem[]
+
+  @@index([tenantId])
+  @@index([shiftId])
+  @@map("transactions")
+}
+
+model TransactionItem {
+  id               String @id @default(uuid()) @db.VarChar(36)
+  transactionId    String @map("transaction_id") @db.VarChar(36)
+  productId        String @map("product_id") @db.VarChar(36)
+  productName      String? @map("product_name")
+  qty              Int
+  priceAtSale      Float  @map("price_at_sale")
+  subtotal         Float  @default(0)
+  taxPercentAtSale Float  @default(0) @map("tax_percent_at_sale")
+  taxAmount        Float  @default(0) @map("tax_amount")
+  tenantId         String @map("tenant_id") @db.VarChar(36)
+
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("transaction_items")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid()) @db.VarChar(36)
+  userId    String?  @map("user_id") @db.VarChar(36)
+  action    String
+  detail    String?
+  ipAddress String?  @map("ip_address")
+  tenantId  String?  @map("tenant_id") @db.VarChar(36)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("audit_logs")
+}
+
+model StoreSettings {
+  id                  String   @id @db.VarChar(36)
+  storeName           String   @default("KasirPro") @map("store_name")
+  storeAddress        String?  @map("store_address")
+  storePhone          String?  @map("store_phone")
+  receiptFooter       String?  @default("Terima kasih!") @map("receipt_footer")
+  paperWidth          String   @default("58mm") @map("paper_width")
+  logoUrl             String?  @map("logo_url")
+  taxPercent          Float    @default(0) @map("tax_percent")
+  serviceChargePercent Float   @default(0) @map("service_charge_percent")
+  receiptPrefix       String   @default("TRX") @map("receipt_prefix")
+  trxCodeFormat       String   @default("PREFIX-TIMESTAMP-RANDOM") @map("trx_code_format")
+  tenantId            String   @map("tenant_id") @db.VarChar(36)
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  @@map("store_settings")
+}
+
+model Invoice {
+  id                        String        @id @default(uuid()) @db.VarChar(36)
+  tenantId                  String        @map("tenant_id") @db.VarChar(36)
+  planCode                  String        @map("plan_code")
+  amount                    Float
+  months                    Int           @default(1)
+  status                    InvoiceStatus @default(pending)
+  providerTransactionNumber String?       @map("provider_transaction_number")
+  paymentUrl                String?       @map("payment_url")
+  productOrderId            String        @unique @map("product_order_id")
+  periodStart               DateTime?     @map("period_start")
+  periodEnd                 DateTime?     @map("period_end")
+  paidAt                    DateTime?     @map("paid_at")
+  raw                       Json?
+  createdAt                 DateTime      @default(now()) @map("created_at")
+  updatedAt                 DateTime      @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("invoices")
+}
+
+model EmailVerification {
+  token     String   @id @db.VarChar(64)
+  userId    String   @map("user_id") @db.VarChar(36)
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("email_verifications")
+}

@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSession } from '@/lib/auth'
-import { supabase } from '@/lib/supabase'
+import { requireTenant } from '@/lib/tenant'
+import { prisma } from '@/lib/prisma'
 
-// Helper to generate transaction code based on settings
 function generateTrxCode(prefix: string, format: string): string {
   const timestamp = Date.now()
   const random = Math.random().toString(36).substr(2, 5).toUpperCase()
@@ -20,13 +19,23 @@ function generateTrxCode(prefix: string, format: string): string {
   }
 }
 
-// POST /api/transactions - Create new transaction
+type CartItem = {
+  productId: string
+  productName: string
+  price: number
+  qty: number
+  subtotal: number
+  taxPercent?: number
+  taxAmount?: number
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const session = await getSession()
-    if (!session) {
+    const ctx = await requireTenant()
+    if (!ctx) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+    const { session, tenant } = ctx
 
     const body = await req.json()
     const {
@@ -44,7 +53,6 @@ export async function POST(req: NextRequest) {
       grandTotal,
     } = body
 
-    // Validate required fields
     if (!items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json({ error: 'Items wajib diisi' }, { status: 400 })
     }
@@ -53,14 +61,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Total dan metode pembayaran wajib diisi' }, { status: 400 })
     }
 
-    // Get active shift for this user
-    const { data: activeShift } = await supabase
-      .from('shifts')
-      .select('id')
-      .eq('user_id', session.id)
-      .is('end_time', null)
-      .maybeSingle()
-
+    const activeShift = await prisma.shift.findFirst({
+      where: { userId: session.id, endTime: null, tenantId: tenant.id },
+    })
     if (!activeShift) {
       return NextResponse.json(
         { error: 'Tidak ada shift aktif. Buka shift terlebih dahulu.' },
@@ -68,105 +71,67 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Get settings for transaction code generation
-    const { data: settings } = await supabase
-      .from('store_settings')
-      .select('receipt_prefix, trx_code_format')
-      .limit(1)
-      .maybeSingle()
-
-    const prefix = settings?.receipt_prefix || 'TRX'
-    const format = settings?.trx_code_format || 'PREFIX-TIMESTAMP-RANDOM'
-
-    // Generate transaction code
+    const settings = await prisma.storeSettings.findUnique({ where: { id: tenant.id } })
+    const prefix = settings?.receiptPrefix || 'TRX'
+    const format = settings?.trxCodeFormat || 'PREFIX-TIMESTAMP-RANDOM'
     const code = generateTrxCode(prefix, format)
 
-    // 1. Insert transaction
-    const { data: transaction, error: transactionError } = await supabase
-      .from('transactions')
-      .insert({
-        trx_code: code,
-        user_id: session.id,
-        shift_id: activeShift.id,
-        total_amount: grandTotal || total,
-        subtotal_amount: total,
-        tax_amount: taxAmount || 0,
-        service_charge_amount: serviceChargeAmount || 0,
-        discount_amount: discountAmount || 0,
-        discount_code: discountCode || null,
-        discount_label: discountLabel || null,
-        edc_code: edcCode || null,
-        payment_method: paymentMethod,
-        cash_received: amountPaid || grandTotal || total,
-        change_amount: change || 0,
-        status: 'SUCCESS',
+    const result = await prisma.$transaction(async (tx) => {
+      const transaction = await tx.transaction.create({
+        data: {
+          trxCode: code,
+          userId: session.id,
+          shiftId: activeShift.id,
+          totalAmount: grandTotal || total,
+          subtotalAmount: total,
+          taxAmount: taxAmount || 0,
+          serviceChargeAmount: serviceChargeAmount || 0,
+          discountAmount: discountAmount || 0,
+          discountCode: discountCode || null,
+          discountLabel: discountLabel || null,
+          edcCode: edcCode || null,
+          paymentMethod,
+          cashReceived: amountPaid || grandTotal || total,
+          changeAmount: change || 0,
+          status: 'SUCCESS',
+          tenantId: tenant.id,
+        },
       })
-      .select()
-      .single()
 
-    if (transactionError) {
-      console.error('Transaction insert error:', JSON.stringify(transactionError))
-      return NextResponse.json(
-        { error: 'Gagal membuat transaksi', detail: transactionError.message || transactionError.details || transactionError.hint || JSON.stringify(transactionError) },
-        { status: 500 }
-      )
-    }
+      await tx.transactionItem.createMany({
+        data: (items as CartItem[]).map((item) => ({
+          transactionId: transaction.id,
+          productId: item.productId,
+          productName: item.productName,
+          priceAtSale: item.price,
+          qty: item.qty,
+          subtotal: item.subtotal,
+          taxPercentAtSale: item.taxPercent || 0,
+          taxAmount: item.taxAmount || 0,
+          tenantId: tenant.id,
+        })),
+      })
 
-    // 2. Insert transaction items
-    const transactionItems = items.map((item: { productId: string; productName: string; price: number; qty: number; subtotal: number; taxPercent?: number; taxAmount?: number }) => ({
-      transaction_id: transaction.id,
-      product_id: item.productId,
-      product_name: item.productName,
-      price_at_sale: item.price,
-      qty: item.qty,
-      tax_percent_at_sale: item.taxPercent || 0,
-      tax_amount: item.taxAmount || 0,
-    }))
-
-    const { error: itemsError } = await supabase
-      .from('transaction_items')
-      .insert(transactionItems)
-
-    if (itemsError) {
-      console.error('Transaction items error:', JSON.stringify(itemsError))
-      // Rollback transaction
-      await supabase.from('transactions').delete().eq('id', transaction.id)
-      return NextResponse.json(
-        { error: 'Gagal menyimpan item transaksi', detail: itemsError.message },
-        { status: 500 }
-      )
-    }
-
-    // 3. Update product stock
-    for (const item of items) {
-      const { data: product } = await supabase
-        .from('products')
-        .select('stock')
-        .eq('id', item.productId)
-        .single()
-
-      if (product) {
-        await supabase
-          .from('products')
-          .update({
-            stock: Math.max(0, product.stock - item.qty),
-          })
-          .eq('id', item.productId)
+      for (const item of items as CartItem[]) {
+        await tx.product.updateMany({
+          where: { id: item.productId, tenantId: tenant.id },
+          data: { stock: { decrement: item.qty } },
+        })
       }
-    }
 
-    // 4. Log activity (fire and forget)
-    supabase.from('audit_logs').insert({
-      user_id: session.id,
-      action: 'CREATE_TRANSACTION',
-      detail: `Total: Rp ${(grandTotal || total).toLocaleString('id-ID')}, Method: ${paymentMethod}${edcCode ? `, EDC: ${edcCode}` : ''}${discountCode ? `, Kupon: ${discountCode}` : ''}`,
-    }).then(() => {})
+      await tx.auditLog.create({
+        data: {
+          userId: session.id,
+          action: 'CREATE_TRANSACTION',
+          detail: `Total: Rp ${(grandTotal || total).toLocaleString('id-ID')}, Method: ${paymentMethod}${edcCode ? `, EDC: ${edcCode}` : ''}${discountCode ? `, Kupon: ${discountCode}` : ''}`,
+          tenantId: tenant.id,
+        },
+      })
 
-    return NextResponse.json({
-      success: true,
-      code: transaction.trx_code,
-      id: transaction.id,
+      return transaction
     })
+
+    return NextResponse.json({ success: true, code: result.trxCode, id: result.id })
   } catch (error) {
     console.error('Transaction error:', error)
     return NextResponse.json(
@@ -176,13 +141,13 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// GET /api/transactions - Get all transactions
 export async function GET(req: NextRequest) {
   try {
-    const session = await getSession()
-    if (!session) {
+    const ctx = await requireTenant()
+    if (!ctx) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+    const { session, tenant } = ctx
 
     const { searchParams } = new URL(req.url)
     const limit = parseInt(searchParams.get('limit') || '50')
@@ -191,40 +156,20 @@ export async function GET(req: NextRequest) {
     const paymentMethodFilter = searchParams.get('payment_method')
     const withItems = searchParams.get('with_items') === 'true'
 
-    let query = supabase
-      .from('transactions')
-      .select(withItems ? '*, items:transaction_items(*)' : '*')
-      .order('created_at', { ascending: false })
-      .limit(limit)
+    const where: Record<string, unknown> = { tenantId: tenant.id }
+    if (status) where.status = status
+    if (shiftId) where.shiftId = shiftId
+    if (paymentMethodFilter) where.paymentMethod = paymentMethodFilter
+    if (session.role === 'KASIR') where.userId = session.id
 
-    if (status) {
-      query = query.eq('status', status)
-    }
+    const data = await prisma.transaction.findMany({
+      where,
+      include: withItems ? { items: true } : undefined,
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+    })
 
-    if (shiftId) {
-      query = query.eq('shift_id', shiftId)
-    }
-
-    if (paymentMethodFilter) {
-      query = query.eq('payment_method', paymentMethodFilter)
-    }
-
-    // If KASIR role, only show their own transactions
-    if (session.role === 'KASIR') {
-      query = query.eq('user_id', session.id)
-    }
-
-    const { data, error } = await query
-
-    if (error) {
-      console.error('Get transactions error:', JSON.stringify(error))
-      return NextResponse.json(
-        { error: 'Gagal memuat transaksi', detail: error.message },
-        { status: 500 }
-      )
-    }
-
-    return NextResponse.json(data || [])
+    return NextResponse.json(data)
   } catch (error) {
     console.error('Get transactions error:', error)
     return NextResponse.json(

@@ -1,16 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
-import { getSession } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
+import { requireTenant } from '@/lib/tenant'
 import { z } from 'zod'
 
-// PATCH - End a shift with closing cash drawer
-export async function PATCH(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const session = await getSession()
-    if (!session || !['KASIR', 'MANAGER', 'SUPERADMIN'].includes(session.role)) {
+    const ctx = await requireTenant()
+    if (!ctx || !['KASIR', 'MANAGER', 'SUPERADMIN'].includes(ctx.session.role)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
     }
 
@@ -24,119 +20,80 @@ export async function PATCH(
 
     const validated = schema.parse(body)
 
-    // Get shift data
-    const { data: shift, error: shiftError } = await supabase
-      .from('shifts')
-      .select('*')
-      .eq('id', id)
-      .single()
-
-    if (shiftError || !shift) {
+    const shift = await prisma.shift.findFirst({
+      where: { id, tenantId: ctx.tenant.id },
+    })
+    if (!shift) {
       return NextResponse.json({ error: 'Shift not found' }, { status: 404 })
     }
 
-    if (shift.end_time) {
-      return NextResponse.json(
-        { error: 'Shift sudah ditutup' },
-        { status: 400 }
-      )
+    if (shift.endTime) {
+      return NextResponse.json({ error: 'Shift sudah ditutup' }, { status: 400 })
     }
 
-    // Calculate total sales and transactions for this shift
-    const { data: transactions } = await supabase
-      .from('transactions')
-      .select('total_amount, payment_method')
-      .eq('shift_id', id)
-      .eq('status', 'SUCCESS')
+    const transactions = await prisma.transaction.findMany({
+      where: { shiftId: id, status: 'SUCCESS', tenantId: ctx.tenant.id },
+      select: { totalAmount: true, paymentMethod: true },
+    })
 
-    const totalSales = transactions?.reduce((sum, t) => sum + t.total_amount, 0) || 0
-    const totalTransactions = transactions?.length || 0
-
-    // Calculate cash sales only (TUNAI)
+    const totalSales = transactions.reduce((sum, t) => sum + t.totalAmount, 0)
+    const totalTransactions = transactions.length
     const cashSales = transactions
-      ?.filter(t => t.payment_method === 'TUNAI')
-      .reduce((sum, t) => sum + t.total_amount, 0) || 0
+      .filter((t) => t.paymentMethod === 'TUNAI')
+      .reduce((sum, t) => sum + t.totalAmount, 0)
 
-    // Expected cash = opening cash + cash sales
-    const expectedCash = (shift.opening_cash || 0) + cashSales
+    const expectedCash = (shift.openingCash || 0) + cashSales
     const cashDifference = validated.closing_cash - expectedCash
 
-    // End the shift
-    const { data: updatedShift, error: updateError } = await supabase
-      .from('shifts')
-      .update({
-        end_time: new Date().toISOString(),
-        total_sales: totalSales,
-        total_transactions: totalTransactions,
-        closing_cash: validated.closing_cash,
-        expected_cash: expectedCash,
-        cash_difference: cashDifference,
-        closing_notes: validated.closing_notes || null,
-      })
-      .eq('id', id)
-      .select('*')
-      .single()
+    const updatedShift = await prisma.shift.update({
+      where: { id },
+      data: {
+        endTime: new Date(),
+        totalSales,
+        totalTransactions,
+        closingCash: validated.closing_cash,
+        expectedCash,
+        cashDifference,
+        closingNotes: validated.closing_notes || null,
+      },
+    })
 
-    if (updateError) {
-      console.error('Update shift error:', JSON.stringify(updateError))
-      return NextResponse.json(
-        { error: 'Failed to end shift', detail: updateError.message },
-        { status: 500 }
-      )
-    }
-
-    // Log activity
-    supabase.from('audit_logs').insert({
-      user_id: session.id,
-      action: 'CLOSE_DRAWER',
-      detail: `Tutup shift - ${totalTransactions} transaksi, Rp ${totalSales.toLocaleString('id-ID')}`,
-    }).then(() => {})
+    await prisma.auditLog.create({
+      data: {
+        userId: ctx.session.id,
+        action: 'CLOSE_DRAWER',
+        detail: `Tutup shift - ${totalTransactions} transaksi, Rp ${totalSales.toLocaleString('id-ID')}`,
+        tenantId: ctx.tenant.id,
+      },
+    })
 
     return NextResponse.json(updatedShift)
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: 'Invalid input', details: error.issues },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Invalid input', details: error.issues }, { status: 400 })
     }
     console.error('Error ending shift:', error)
-    return NextResponse.json(
-      { error: 'Failed to end shift' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to end shift' }, { status: 500 })
   }
 }
 
-// GET - Get shift detail
-export async function GET(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const session = await getSession()
-    if (!session) {
+    const ctx = await requireTenant()
+    if (!ctx) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id } = params
-
-    const { data: shift, error } = await supabase
-      .from('shifts')
-      .select('*')
-      .eq('id', id)
-      .single()
-
-    if (error || !shift) {
+    const shift = await prisma.shift.findFirst({
+      where: { id: params.id, tenantId: ctx.tenant.id },
+    })
+    if (!shift) {
       return NextResponse.json({ error: 'Shift not found' }, { status: 404 })
     }
 
     return NextResponse.json(shift)
   } catch (error) {
     console.error('Error fetching shift:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch shift' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to fetch shift' }, { status: 500 })
   }
 }

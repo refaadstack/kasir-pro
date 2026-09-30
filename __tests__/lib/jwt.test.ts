@@ -1,16 +1,18 @@
 import { describe, it, expect, beforeAll } from 'vitest'
 import { signToken, verifyToken } from '@/lib/jwt'
 
+const base = { tenantId: 'tenant-1', plan: 'TRIAL' as const }
+
 describe('JWT Functions', () => {
   let validToken: string
 
   beforeAll(async () => {
-    // Create a valid token for testing
     validToken = await signToken({
       id: '123',
       name: 'Test User',
       email: 'test@example.com',
       role: 'KASIR',
+      ...base,
     })
   })
 
@@ -21,11 +23,12 @@ describe('JWT Functions', () => {
         name: 'Test User',
         email: 'test@example.com',
         role: 'KASIR',
+        ...base,
       })
 
       expect(token).toBeTruthy()
       expect(typeof token).toBe('string')
-      expect(token.split('.')).toHaveLength(3) // JWT has 3 parts
+      expect(token.split('.')).toHaveLength(3)
     })
 
     it('should generate different tokens for different payloads', async () => {
@@ -34,6 +37,7 @@ describe('JWT Functions', () => {
         name: 'User 1',
         email: 'user1@example.com',
         role: 'KASIR',
+        ...base,
       })
 
       const token2 = await signToken({
@@ -41,6 +45,7 @@ describe('JWT Functions', () => {
         name: 'User 2',
         email: 'user2@example.com',
         role: 'SUPERADMIN',
+        ...base,
       })
 
       expect(token1).not.toBe(token2)
@@ -56,6 +61,7 @@ describe('JWT Functions', () => {
       expect(payload?.name).toBe('Test User')
       expect(payload?.email).toBe('test@example.com')
       expect(payload?.role).toBe('KASIR')
+      expect(payload?.tenantId).toBe('tenant-1')
     })
 
     it('should return null for invalid token', async () => {

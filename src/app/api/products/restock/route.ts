@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
-import { getSession } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
+import { requireTenant } from '@/lib/tenant'
 import { z } from 'zod'
 
-// POST /api/products/restock - Add stock to existing product
 export async function POST(req: NextRequest) {
   try {
-    const session = await getSession()
-    if (!session) {
+    const ctx = await requireTenant()
+    if (!ctx) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -20,40 +19,30 @@ export async function POST(req: NextRequest) {
 
     const validated = schema.parse(body)
 
-    // Get current stock
-    const { data: product, error: fetchError } = await supabase
-      .from('products')
-      .select('id, name, stock')
-      .eq('id', validated.product_id)
-      .single()
+    const product = await prisma.product.findFirst({
+      where: { id: validated.product_id, tenantId: ctx.tenant.id },
+      select: { id: true, name: true, stock: true },
+    })
 
-    if (fetchError || !product) {
+    if (!product) {
       return NextResponse.json({ error: 'Produk tidak ditemukan' }, { status: 404 })
     }
 
-    // Update stock (add to existing)
     const newStock = product.stock + validated.qty
 
-    const { data: updated, error: updateError } = await supabase
-      .from('products')
-      .update({ stock: newStock })
-      .eq('id', validated.product_id)
-      .select()
-      .single()
+    const updated = await prisma.product.update({
+      where: { id: validated.product_id },
+      data: { stock: newStock },
+    })
 
-    if (updateError) {
-      return NextResponse.json(
-        { error: 'Gagal update stok', detail: updateError.message },
-        { status: 500 }
-      )
-    }
-
-    // Log activity
-    supabase.from('audit_logs').insert({
-      user_id: session.id,
-      action: 'RESTOCK',
-      detail: `${product.name}: +${validated.qty} (${product.stock} → ${newStock})${validated.notes ? ' | ' + validated.notes : ''}`,
-    }).then(() => {})
+    await prisma.auditLog.create({
+      data: {
+        userId: ctx.session.id,
+        action: 'RESTOCK',
+        detail: `${product.name}: +${validated.qty} (${product.stock} → ${newStock})${validated.notes ? ' | ' + validated.notes : ''}`,
+        tenantId: ctx.tenant.id,
+      },
+    })
 
     return NextResponse.json({
       success: true,
