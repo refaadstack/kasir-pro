@@ -23,7 +23,7 @@ type Tenant = {
   status: string
   trialEndsAt: string | null
   currentPeriodEnd: string | null
-  owner: { name: string | null; email: string } | null
+  owner: { name: string | null; email: string | null } | null
   counts: { users: number; transactions: number; products: number }
 }
 

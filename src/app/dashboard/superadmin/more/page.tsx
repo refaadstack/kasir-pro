@@ -82,7 +82,9 @@ export default function MorePage() {
             </div>
             <div className="flex-1">
               <h3 className="font-bold text-white">{user?.name}</h3>
-              <p className="text-sm text-white/60">{user?.email}</p>
+              <p className="text-sm text-white/60">
+                {user?.username ? `@${user.username}` : user?.email}
+              </p>
               <div className="mt-1">
                 <span className="inline-block px-2 py-0.5 bg-amber-400/20 border border-amber-400/30 rounded text-xs font-semibold text-amber-400">
                   {user?.role}

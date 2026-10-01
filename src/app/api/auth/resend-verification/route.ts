@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
     }
 
     const user = await prisma.user.findUnique({ where: { email: parsed.data.email } })
-    if (user && !user.emailVerifiedAt) {
+    if (user && user.email && !user.emailVerifiedAt) {
       const token = crypto.randomBytes(32).toString('hex')
       await prisma.emailVerification.create({
         data: { token, userId: user.id, expiresAt: new Date(Date.now() + 60 * 60 * 1000) },

@@ -9,7 +9,8 @@ const secret = new TextEncoder().encode(process.env.JWT_SECRET)
 export type JWTPayload = {
   id: string
   name: string
-  email: string
+  email: string | null
+  username: string | null
   role: 'KASIR' | 'MANAGER' | 'SUPERADMIN'
   tenantId: string | null
   plan: 'TRIAL' | 'PREMIUM'

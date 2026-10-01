@@ -3,11 +3,12 @@ import { z } from 'zod'
 import crypto from 'crypto'
 import { prisma } from '@/lib/prisma'
 import { sendMail, verificationEmail } from '@/lib/mail'
+import { hashPassword } from '@/lib/password'
 
 const registerSchema = z.object({
   name: z.string().min(2, 'Nama minimal 2 karakter'),
   email: z.string().email('Email tidak valid'),
-  pin: z.string().length(4, 'PIN harus 4 digit'),
+  password: z.string().min(8, 'Password minimal 8 karakter'),
 })
 
 function appUrl() {
@@ -22,17 +23,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 })
     }
 
-    const { name, email, pin } = parsed.data
+    const { name, email, password } = parsed.data
 
     const existing = await prisma.user.findUnique({ where: { email } })
     if (existing && existing.emailVerifiedAt) {
       return NextResponse.json({ error: 'Email sudah terdaftar' }, { status: 400 })
     }
 
+    const passwordHash = await hashPassword(password)
+
     const user = existing
-      ? await prisma.user.update({ where: { email }, data: { name, pin } })
+      ? await prisma.user.update({ where: { email }, data: { name, password: passwordHash } })
       : await prisma.user.create({
-          data: { name, email, pin, role: 'SUPERADMIN', isActive: true },
+          data: { name, email, password: passwordHash, role: 'SUPERADMIN', isActive: true },
         })
 
     const token = crypto.randomBytes(32).toString('hex')
@@ -41,9 +44,8 @@ export async function POST(req: NextRequest) {
     })
 
     const url = `${appUrl()}/api/auth/verify?token=${token}`
-    const mail = verificationEmail(name, url)
     try {
-      await sendMail({ to: email, ...mail })
+      await sendMail({ to: email, ...verificationEmail(name, url) })
     } catch (error) {
       console.error('Verification email failed:', error)
     }

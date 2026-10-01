@@ -45,13 +45,14 @@ export async function GET(req: NextRequest) {
     }
 
     if (!user.tenantId) {
-      const slug = await uniqueSlug(user.name || user.email.split('@')[0])
+      const fallbackName = user.email ? user.email.split('@')[0] : 'toko'
+      const slug = await uniqueSlug(user.name || fallbackName)
       const trialEndsAt = new Date(Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000)
 
       await prisma.$transaction(async (tx) => {
         const tenant = await tx.tenant.create({
           data: {
-            name: user.name || user.email.split('@')[0],
+            name: user.name || fallbackName,
             slug,
             ownerId: user.id,
             plan: 'TRIAL',

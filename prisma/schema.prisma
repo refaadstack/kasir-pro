@@ -69,22 +69,27 @@ model Tenant {
 }
 
 model User {
-  id              String    @id @default(uuid()) @db.VarChar(36)
-  name            String?
-  email           String    @unique
-  pin             String?
-  role            Role      @default(KASIR)
-  phone           String?
-  isActive        Boolean   @default(true) @map("is_active")
-  isPlatformAdmin Boolean   @default(false) @map("is_platform_admin")
-  tenantId        String?   @map("tenant_id") @db.VarChar(36)
-  emailVerifiedAt DateTime? @map("email_verified_at")
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
+  id                  String    @id @default(uuid()) @db.VarChar(36)
+  name                String?
+  email               String?   @unique
+  password            String?
+  username            String?
+  pin                 String?
+  role                Role      @default(KASIR)
+  phone               String?
+  isActive            Boolean   @default(true) @map("is_active")
+  isPlatformAdmin     Boolean   @default(false) @map("is_platform_admin")
+  failedLoginAttempts Int       @default(0) @map("failed_login_attempts")
+  lockedUntil         DateTime? @map("locked_until")
+  tenantId            String?   @map("tenant_id") @db.VarChar(36)
+  emailVerifiedAt     DateTime? @map("email_verified_at")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
 
   tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: SetNull)
 
   @@unique([tenantId, pin])
+  @@unique([tenantId, username])
   @@index([tenantId])
   @@map("users")
 }

@@ -17,13 +17,22 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     }
 
     const body = await req.json()
-    const { name, email, pin, role, phone, isActive } = body
+    const { name, username, email, pin, role, phone, isActive } = body
+
+    if (username) {
+      const usernameExists = await prisma.user.findFirst({
+        where: { tenantId: ctx.tenant.id, username, id: { not: params.id } },
+      })
+      if (usernameExists) {
+        return NextResponse.json({ error: 'Username sudah digunakan' }, { status: 400 })
+      }
+    }
 
     if (email) {
-      const existing = await prisma.user.findFirst({
+      const emailExists = await prisma.user.findFirst({
         where: { email, id: { not: params.id } },
       })
-      if (existing) {
+      if (emailExists) {
         return NextResponse.json({ error: 'Email sudah digunakan' }, { status: 400 })
       }
     }
@@ -42,7 +51,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
     const updateData: Record<string, unknown> = {}
     if (name !== undefined) updateData.name = name
-    if (email !== undefined) updateData.email = email
+    if (username !== undefined) updateData.username = username
+    if (email !== undefined) updateData.email = email || null
     if (pin && pin.length === 4) updateData.pin = pin
     if (role !== undefined) updateData.role = role
     if (phone !== undefined) updateData.phone = phone || null

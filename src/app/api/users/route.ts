@@ -13,7 +13,7 @@ export async function GET() {
 
     const users = await prisma.user.findMany({
       where: { tenantId: ctx.tenant.id },
-      select: { id: true, name: true, email: true, role: true, phone: true, isActive: true },
+      select: { id: true, name: true, username: true, email: true, role: true, phone: true, isActive: true },
       orderBy: { createdAt: 'desc' },
     })
 
@@ -37,19 +37,28 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json()
-    const { name, email, pin, role, phone, isActive } = body
+    const { name, username, email, pin, role, phone, isActive } = body
 
-    if (!name || !email || !pin || !role) {
-      return NextResponse.json({ error: 'Data tidak lengkap' }, { status: 400 })
+    if (!name || !username || !pin || !role) {
+      return NextResponse.json({ error: 'Nama, username, PIN, dan role wajib diisi' }, { status: 400 })
     }
 
     if (pin.length !== 4) {
       return NextResponse.json({ error: 'PIN harus 4 digit' }, { status: 400 })
     }
 
-    const emailExists = await prisma.user.findUnique({ where: { email } })
-    if (emailExists) {
-      return NextResponse.json({ error: 'Email sudah digunakan' }, { status: 400 })
+    const usernameExists = await prisma.user.findFirst({
+      where: { tenantId: ctx.tenant.id, username },
+    })
+    if (usernameExists) {
+      return NextResponse.json({ error: 'Username sudah digunakan' }, { status: 400 })
+    }
+
+    if (email) {
+      const emailExists = await prisma.user.findUnique({ where: { email } })
+      if (emailExists) {
+        return NextResponse.json({ error: 'Email sudah digunakan' }, { status: 400 })
+      }
     }
 
     const pinExists = await prisma.user.findFirst({
@@ -65,7 +74,8 @@ export async function POST(req: NextRequest) {
     const user = await prisma.user.create({
       data: {
         name,
-        email,
+        username,
+        email: email || null,
         pin,
         role,
         phone: phone || null,

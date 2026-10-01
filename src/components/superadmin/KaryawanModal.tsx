@@ -9,7 +9,8 @@ import { useToast } from '@/hooks/use-toast'
 type User = {
   id: string
   name: string
-  email: string
+  username: string | null
+  email: string | null
   role: 'KASIR' | 'MANAGER' | 'SUPERADMIN'
   isActive: boolean
   phone?: string
@@ -25,6 +26,7 @@ type KaryawanModalProps = {
 export function KaryawanModal({ isOpen, onClose, onSuccess, user }: KaryawanModalProps) {
   const [formData, setFormData] = useState<{
     name: string
+    username: string
     email: string
     pin: string
     role: 'KASIR' | 'MANAGER' | 'SUPERADMIN'
@@ -32,6 +34,7 @@ export function KaryawanModal({ isOpen, onClose, onSuccess, user }: KaryawanModa
     isActive: boolean
   }>({
     name: '',
+    username: '',
     email: '',
     pin: '',
     role: 'KASIR',
@@ -46,7 +49,8 @@ export function KaryawanModal({ isOpen, onClose, onSuccess, user }: KaryawanModa
       if (user) {
         setFormData({
           name: user.name,
-          email: user.email,
+          username: user.username || '',
+          email: user.email || '',
           pin: '',
           role: user.role,
           phone: user.phone || '',
@@ -55,6 +59,7 @@ export function KaryawanModal({ isOpen, onClose, onSuccess, user }: KaryawanModa
       } else {
         setFormData({
           name: '',
+          username: '',
           email: '',
           pin: '',
           role: 'KASIR',
@@ -135,7 +140,24 @@ export function KaryawanModal({ isOpen, onClose, onSuccess, user }: KaryawanModa
 
           <div>
             <label className="block text-xs font-semibold text-white/60 mb-2 uppercase tracking-wider">
-              Email *
+              Username *
+            </label>
+            <Input
+              type="text"
+              value={formData.username}
+              onChange={(e) =>
+                setFormData({ ...formData, username: e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, '') })
+              }
+              placeholder="budi"
+              className="bg-white/5 border-white/10 text-white"
+              required
+            />
+            <p className="text-[11px] text-white/40 mt-1">Dipakai karyawan untuk login bersama PIN.</p>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-white/60 mb-2 uppercase tracking-wider">
+              Email (opsional)
             </label>
             <Input
               type="email"
@@ -143,7 +165,6 @@ export function KaryawanModal({ isOpen, onClose, onSuccess, user }: KaryawanModa
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               placeholder="budi@kasirpro.com"
               className="bg-white/5 border-white/10 text-white"
-              required
             />
           </div>
 

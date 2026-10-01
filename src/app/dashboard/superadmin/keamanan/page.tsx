@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Shield, Lock, Key, Eye, EyeOff, AlertTriangle } from 'lucide-react'
+import { Shield, Key, Link2, Copy } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -11,270 +11,207 @@ import { useAuth } from '@/hooks/useAuth'
 export default function KeamananPage() {
   const { user } = useAuth()
   const { toast } = useToast()
-  const [showCurrentPin, setShowCurrentPin] = useState(false)
-  const [showNewPin, setShowNewPin] = useState(false)
-  const [showConfirmPin, setShowConfirmPin] = useState(false)
 
-  const [pinForm, setPinForm] = useState({
-    currentPin: '',
-    newPin: '',
-    confirmPin: '',
-  })
+  const [passwordForm, setPasswordForm] = useState({ current: '', next: '', confirm: '' })
+  const [isSavingPassword, setIsSavingPassword] = useState(false)
 
-  const handlePinChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
-    // Only allow 4 digits
-    if (value.length <= 4 && /^\d*$/.test(value)) {
-      setPinForm(prev => ({ ...prev, [name]: value }))
+  const [pinForm, setPinForm] = useState({ current: '', next: '', confirm: '' })
+  const [isSavingPin, setIsSavingPin] = useState(false)
+
+  const digits = (v: string) => v.replace(/\D/g, '').slice(0, 4)
+
+  const submitPassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (passwordForm.next.length < 8) {
+      toast({ title: 'Error', description: 'Password baru minimal 8 karakter', variant: 'destructive' })
+      return
+    }
+    if (passwordForm.next !== passwordForm.confirm) {
+      toast({ title: 'Error', description: 'Konfirmasi password tidak cocok', variant: 'destructive' })
+      return
+    }
+    setIsSavingPassword(true)
+    try {
+      const res = await fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword: passwordForm.current, newPassword: passwordForm.next }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Gagal mengubah password')
+      toast({ title: 'Berhasil', description: 'Password berhasil diubah' })
+      setPasswordForm({ current: '', next: '', confirm: '' })
+    } catch (error) {
+      toast({ title: 'Gagal', description: error instanceof Error ? error.message : 'Error', variant: 'destructive' })
+    } finally {
+      setIsSavingPassword(false)
     }
   }
 
-  const handleSubmitPin = (e: React.FormEvent) => {
+  const submitPin = async (e: React.FormEvent) => {
     e.preventDefault()
-
-    if (pinForm.newPin.length !== 4) {
-      toast({
-        title: 'Error',
-        description: 'PIN harus 4 digit',
-        variant: 'destructive',
-      })
+    if (pinForm.next.length !== 4) {
+      toast({ title: 'Error', description: 'PIN harus 4 digit', variant: 'destructive' })
       return
     }
-
-    if (pinForm.newPin !== pinForm.confirmPin) {
-      toast({
-        title: 'Error',
-        description: 'PIN baru tidak cocok',
-        variant: 'destructive',
-      })
+    if (pinForm.next !== pinForm.confirm) {
+      toast({ title: 'Error', description: 'PIN baru tidak cocok', variant: 'destructive' })
       return
     }
+    setIsSavingPin(true)
+    try {
+      const res = await fetch('/api/auth/change-pin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPin: pinForm.current || undefined, newPin: pinForm.next }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Gagal mengubah PIN')
+      toast({ title: 'Berhasil', description: 'PIN berhasil diubah' })
+      setPinForm({ current: '', next: '', confirm: '' })
+    } catch (error) {
+      toast({ title: 'Gagal', description: error instanceof Error ? error.message : 'Error', variant: 'destructive' })
+    } finally {
+      setIsSavingPin(false)
+    }
+  }
 
-    // In a real app, this would call an API to update the PIN
-    toast({
-      title: 'Berhasil',
-      description: 'PIN berhasil diubah',
-    })
+  const staffUrl = user?.tenant?.slug
+    ? `${typeof window !== 'undefined' ? window.location.origin : ''}/staff/${user.tenant.slug}`
+    : ''
 
-    setPinForm({
-      currentPin: '',
-      newPin: '',
-      confirmPin: '',
-    })
+  const copyStaffUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(staffUrl)
+      toast({ title: 'Disalin', description: 'Link login karyawan disalin' })
+    } catch {
+      toast({ title: 'Gagal', description: 'Tidak bisa menyalin', variant: 'destructive' })
+    }
   }
 
   return (
     <div className="p-4 space-y-4">
-      {/* Header */}
       <div>
         <h1 className="text-xl font-black text-white">Keamanan</h1>
-        <p className="text-sm text-white/40 mt-1">
-          Kelola password dan PIN akun Anda
-        </p>
+        <p className="text-sm text-white/40 mt-1">Kelola password, PIN, dan akses karyawan</p>
       </div>
 
-      {/* Security Info */}
       <Card className="bg-gradient-to-br from-amber-400/10 to-orange-500/10 border-amber-400/20">
-        <CardContent className="p-4">
-          <div className="flex gap-3">
-            <div className="w-10 h-10 bg-amber-400/20 rounded-xl flex items-center justify-center flex-shrink-0">
-              <Shield className="w-5 h-5 text-amber-400" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-amber-400 text-sm">Akun Anda Aman</h3>
-              <p className="text-xs text-amber-400/80 mt-1">
-                Terakhir login: {new Date().toLocaleDateString('id-ID', {
-                  day: 'numeric',
-                  month: 'long',
-                  year: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })}
-              </p>
-            </div>
+        <CardContent className="p-4 flex gap-3">
+          <div className="w-10 h-10 bg-amber-400/20 rounded-xl flex items-center justify-center flex-shrink-0">
+            <Shield className="w-5 h-5 text-amber-400" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-amber-400 text-sm">Akun Anda</h3>
+            <p className="text-xs text-amber-400/80 mt-1">
+              {user?.name} · {user?.username ? `@${user.username}` : user?.email}
+            </p>
           </div>
         </CardContent>
       </Card>
 
-      {/* Account Info */}
-      <Card className="bg-white/[0.04] border-white/10">
-        <CardHeader>
-          <CardTitle className="text-sm font-bold text-white">Informasi Akun</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div>
-            <label className="text-xs text-white/60 font-semibold uppercase tracking-wider">
-              Nama
-            </label>
-            <div className="mt-2 px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-sm">
-              {user?.name}
+      {staffUrl && (
+        <Card className="bg-white/[0.04] border-white/10">
+          <CardHeader>
+            <CardTitle className="text-sm font-bold text-white flex items-center gap-2">
+              <Link2 className="w-4 h-4" /> Link Login Karyawan
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <div className="px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-xs break-all">
+              {staffUrl}
             </div>
-          </div>
-          <div>
-            <label className="text-xs text-white/60 font-semibold uppercase tracking-wider">
-              Email
-            </label>
-            <div className="mt-2 px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-sm">
-              {user?.email}
-            </div>
-          </div>
-          <div>
-            <label className="text-xs text-white/60 font-semibold uppercase tracking-wider">
-              Role
-            </label>
-            <div className="mt-2">
-              <span className="inline-block px-3 py-1.5 bg-amber-400/20 border border-amber-400/30 rounded-lg text-xs font-semibold text-amber-400">
-                {user?.role}
-              </span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+            <Button variant="outline" size="sm" onClick={copyStaffUrl}>
+              <Copy className="w-3.5 h-3.5 mr-1.5" /> Salin link
+            </Button>
+            <p className="text-[11px] text-white/40">
+              Bagikan ke karyawan. Mereka login pakai username + PIN.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
-      {/* Change PIN */}
+      {user?.role === 'SUPERADMIN' && (
+        <Card className="bg-white/[0.04] border-white/10">
+          <CardHeader>
+            <CardTitle className="text-sm font-bold text-white">Ubah Password</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={submitPassword} className="space-y-3">
+              <Input
+                type="password"
+                placeholder="Password lama"
+                value={passwordForm.current}
+                onChange={(e) => setPasswordForm({ ...passwordForm, current: e.target.value })}
+                className="bg-white/5 border-white/10 text-white"
+              />
+              <Input
+                type="password"
+                placeholder="Password baru (min. 8 karakter)"
+                value={passwordForm.next}
+                onChange={(e) => setPasswordForm({ ...passwordForm, next: e.target.value })}
+                className="bg-white/5 border-white/10 text-white"
+              />
+              <Input
+                type="password"
+                placeholder="Ulangi password baru"
+                value={passwordForm.confirm}
+                onChange={(e) => setPasswordForm({ ...passwordForm, confirm: e.target.value })}
+                className="bg-white/5 border-white/10 text-white"
+              />
+              <Button
+                type="submit"
+                className="w-full bg-amber-400 hover:bg-amber-500 text-gray-900 font-bold"
+                disabled={isSavingPassword}
+              >
+                {isSavingPassword ? 'Menyimpan...' : 'Simpan Password'}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      )}
+
       <Card className="bg-white/[0.04] border-white/10">
         <CardHeader>
-          <CardTitle className="text-sm font-bold text-white">Ubah PIN</CardTitle>
+          <CardTitle className="text-sm font-bold text-white flex items-center gap-2">
+            <Key className="w-4 h-4" /> Ubah PIN
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmitPin} className="space-y-4">
-            {/* Current PIN */}
-            <div>
-              <label className="text-xs text-white/60 font-semibold uppercase tracking-wider">
-                PIN Saat Ini
-              </label>
-              <div className="relative mt-2">
-                <Input
-                  type={showCurrentPin ? 'text' : 'password'}
-                  name="currentPin"
-                  value={pinForm.currentPin}
-                  onChange={handlePinChange}
-                  placeholder="••••"
-                  maxLength={4}
-                  className="pr-10 bg-white/5 border-white/10 text-white text-center text-2xl tracking-widest font-mono"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowCurrentPin(!showCurrentPin)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/60"
-                >
-                  {showCurrentPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-
-            {/* New PIN */}
-            <div>
-              <label className="text-xs text-white/60 font-semibold uppercase tracking-wider">
-                PIN Baru
-              </label>
-              <div className="relative mt-2">
-                <Input
-                  type={showNewPin ? 'text' : 'password'}
-                  name="newPin"
-                  value={pinForm.newPin}
-                  onChange={handlePinChange}
-                  placeholder="••••"
-                  maxLength={4}
-                  className="pr-10 bg-white/5 border-white/10 text-white text-center text-2xl tracking-widest font-mono"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowNewPin(!showNewPin)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/60"
-                >
-                  {showNewPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-
-            {/* Confirm PIN */}
-            <div>
-              <label className="text-xs text-white/60 font-semibold uppercase tracking-wider">
-                Konfirmasi PIN Baru
-              </label>
-              <div className="relative mt-2">
-                <Input
-                  type={showConfirmPin ? 'text' : 'password'}
-                  name="confirmPin"
-                  value={pinForm.confirmPin}
-                  onChange={handlePinChange}
-                  placeholder="••••"
-                  maxLength={4}
-                  className="pr-10 bg-white/5 border-white/10 text-white text-center text-2xl tracking-widest font-mono"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPin(!showConfirmPin)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/60"
-                >
-                  {showConfirmPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-
-            {/* Warning */}
-            <div className="flex gap-2 p-3 bg-yellow-400/10 border border-yellow-400/20 rounded-xl">
-              <AlertTriangle className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" />
-              <p className="text-xs text-yellow-400/90">
-                Pastikan Anda mengingat PIN baru. PIN digunakan untuk login dan verifikasi transaksi penting.
-              </p>
-            </div>
-
-            {/* Submit Button */}
+          <form onSubmit={submitPin} className="space-y-3">
+            <Input
+              type="text"
+              inputMode="numeric"
+              placeholder="PIN lama"
+              value={pinForm.current}
+              onChange={(e) => setPinForm({ ...pinForm, current: digits(e.target.value) })}
+              className="bg-white/5 border-white/10 text-white text-center tracking-widest"
+            />
+            <Input
+              type="text"
+              inputMode="numeric"
+              placeholder="PIN baru (4 digit)"
+              value={pinForm.next}
+              onChange={(e) => setPinForm({ ...pinForm, next: digits(e.target.value) })}
+              className="bg-white/5 border-white/10 text-white text-center tracking-widest"
+            />
+            <Input
+              type="text"
+              inputMode="numeric"
+              placeholder="Ulangi PIN baru"
+              value={pinForm.confirm}
+              onChange={(e) => setPinForm({ ...pinForm, confirm: digits(e.target.value) })}
+              className="bg-white/5 border-white/10 text-white text-center tracking-widest"
+            />
+            <p className="text-[11px] text-white/40">PIN dipakai untuk approve void.</p>
             <Button
               type="submit"
               className="w-full bg-amber-400 hover:bg-amber-500 text-gray-900 font-bold"
+              disabled={isSavingPin}
             >
-              <Key className="w-4 h-4 mr-2" />
-              Ubah PIN
+              {isSavingPin ? 'Menyimpan...' : 'Simpan PIN'}
             </Button>
           </form>
-        </CardContent>
-      </Card>
-
-      {/* Password Section (Placeholder) */}
-      <Card className="bg-white/[0.04] border-white/10">
-        <CardHeader>
-          <CardTitle className="text-sm font-bold text-white">Ubah Password</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex gap-3 p-4 bg-blue-400/10 border border-blue-400/20 rounded-xl">
-            <Lock className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
-            <div>
-              <h3 className="font-semibold text-blue-400 text-sm">Fitur Dalam Pengembangan</h3>
-              <p className="text-xs text-blue-400/80 mt-1">
-                Fitur ubah password akan tersedia pada versi mendatang. Saat ini sistem menggunakan PIN untuk autentikasi.
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Security Tips */}
-      <Card className="bg-white/[0.04] border-white/10">
-        <CardHeader>
-          <CardTitle className="text-sm font-bold text-white">Tips Keamanan</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ul className="space-y-2 text-xs text-white/60">
-            <li className="flex gap-2">
-              <span className="text-amber-400">•</span>
-              <span>Jangan bagikan PIN Anda kepada siapapun</span>
-            </li>
-            <li className="flex gap-2">
-              <span className="text-amber-400">•</span>
-              <span>Gunakan PIN yang tidak mudah ditebak</span>
-            </li>
-            <li className="flex gap-2">
-              <span className="text-amber-400">•</span>
-              <span>Ubah PIN secara berkala untuk keamanan maksimal</span>
-            </li>
-            <li className="flex gap-2">
-              <span className="text-amber-400">•</span>
-              <span>Logout setelah selesai menggunakan sistem</span>
-            </li>
-          </ul>
         </CardContent>
       </Card>
     </div>

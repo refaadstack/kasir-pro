@@ -8,18 +8,27 @@ import { useToast } from '@/hooks/use-toast'
 
 export default function RegisterForm() {
   const { toast } = useToast()
-  const [form, setForm] = useState({ name: '', email: '', pin: '' })
+  const [form, setForm] = useState({ name: '', email: '', password: '', confirm: '' })
   const [isLoading, setIsLoading] = useState(false)
   const [done, setDone] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (form.password.length < 8) {
+      toast({ title: 'Error', description: 'Password minimal 8 karakter', variant: 'destructive' })
+      return
+    }
+    if (form.password !== form.confirm) {
+      toast({ title: 'Error', description: 'Konfirmasi password tidak cocok', variant: 'destructive' })
+      return
+    }
+
     setIsLoading(true)
     try {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ name: form.name, email: form.email, password: form.password }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Gagal mendaftar')
@@ -79,22 +88,31 @@ export default function RegisterForm() {
             />
           </div>
           <div>
-            <p className="text-xs font-bold text-white/40 uppercase tracking-widest mb-2">PIN (4 digit)</p>
+            <p className="text-xs font-bold text-white/40 uppercase tracking-widest mb-2">Password</p>
             <Input
-              type="text"
-              inputMode="numeric"
-              value={form.pin}
-              onChange={(e) => setForm({ ...form, pin: e.target.value.replace(/\D/g, '').slice(0, 4) })}
-              placeholder="1234"
-              className="bg-white/5 border-white/10 text-white h-12 text-center text-2xl tracking-widest"
-              maxLength={4}
+              type="password"
+              value={form.password}
+              onChange={(e) => setForm({ ...form, password: e.target.value })}
+              placeholder="Minimal 8 karakter"
+              className="bg-white/5 border-white/10 text-white h-12"
+              required
+            />
+          </div>
+          <div>
+            <p className="text-xs font-bold text-white/40 uppercase tracking-widest mb-2">Ulangi Password</p>
+            <Input
+              type="password"
+              value={form.confirm}
+              onChange={(e) => setForm({ ...form, confirm: e.target.value })}
+              placeholder="Ulangi password"
+              className="bg-white/5 border-white/10 text-white h-12"
               required
             />
           </div>
           <button
             type="submit"
             className="w-full h-12 rounded-xl bg-amber-400 hover:bg-amber-500 text-gray-900 font-bold transition-all disabled:opacity-50"
-            disabled={isLoading || form.pin.length !== 4}
+            disabled={isLoading}
           >
             {isLoading ? 'Memproses...' : 'Daftar Gratis 14 Hari'}
           </button>

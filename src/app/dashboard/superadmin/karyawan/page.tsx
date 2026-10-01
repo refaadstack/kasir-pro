@@ -15,7 +15,8 @@ import { KaryawanModal } from '@/components/superadmin/KaryawanModal'
 type User = {
   id: string
   name: string
-  email: string
+  username: string | null
+  email: string | null
   role: 'KASIR' | 'MANAGER' | 'SUPERADMIN'
   isActive: boolean
   phone?: string
@@ -36,9 +37,10 @@ export default function KaryawanPage() {
 
   useEffect(() => {
     if (search) {
-      const filtered = users.filter(u => 
+      const filtered = users.filter(u =>
         u.name.toLowerCase().includes(search.toLowerCase()) ||
-        u.email.toLowerCase().includes(search.toLowerCase())
+        (u.username || '').toLowerCase().includes(search.toLowerCase()) ||
+        (u.email || '').toLowerCase().includes(search.toLowerCase())
       )
       setFilteredUsers(filtered)
     } else {
@@ -190,7 +192,7 @@ export default function KaryawanPage() {
                       )}
                     </div>
                     <div className="flex items-center gap-3 text-xs text-white/40">
-                      <span>{user.email}</span>
+                      <span>{user.username ? `@${user.username}` : user.email || '-'}</span>
                       {user.phone && (
                         <>
                           <span>•</span>

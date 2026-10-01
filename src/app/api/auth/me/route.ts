@@ -21,14 +21,16 @@ export async function GET() {
       id: session.id,
       name: session.name,
       email: session.email,
+      username: session.username,
       role: session.role,
       isPlatformAdmin: session.isPlatformAdmin,
       tenantId: session.tenantId,
       plan: tenant?.plan || session.plan,
       tenant: tenant
-        ? {
+        ?           {
             id: tenant.id,
             name: tenant.name,
+            slug: tenant.slug,
             plan: tenant.plan,
             status: tenant.status,
             trialEndsAt: tenant.trialEndsAt,

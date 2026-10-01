@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 type Tenant = {
   id: string
   name: string
+  slug: string
   plan: 'TRIAL' | 'PREMIUM'
   status: 'trialing' | 'active' | 'past_due' | 'expired'
   trialEndsAt: string | null
@@ -15,7 +16,8 @@ type Tenant = {
 type User = {
   id: string
   name: string
-  email: string
+  email: string | null
+  username: string | null
   role: 'KASIR' | 'MANAGER' | 'SUPERADMIN'
   isPlatformAdmin: boolean
   tenantId: string | null

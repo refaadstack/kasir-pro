@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
     const payment = await createPayment({
       productOrderId,
       amount: plan.amount,
-      customer: { name: ctx.session.name || ctx.tenant.name, email: ctx.session.email },
+      customer: { name: ctx.session.name || ctx.tenant.name, email: ctx.session.email || undefined },
       callbackUrl: `${appUrl()}/api/billing/webhook`,
       items: [{ id: plan.code, name: `KasirPro Premium - ${plan.label}`, price: plan.amount, quantity: 1 }],
     })

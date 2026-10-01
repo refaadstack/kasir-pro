@@ -61,6 +61,12 @@ export default async function LoginPage({
             Daftar gratis
           </Link>
         </p>
+        <p className="text-center text-sm text-white/40 mt-2">
+          Karyawan?{' '}
+          <Link href={'/staff' as any} className="text-amber-400 hover:underline">
+            Login Karyawan
+          </Link>
+        </p>
       </div>
     </div>
   )

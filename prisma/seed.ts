@@ -1,7 +1,11 @@
 import 'dotenv/config'
 import { PrismaClient } from '@prisma/client'
+import bcrypt from 'bcryptjs'
 
 const prisma = new PrismaClient()
+
+const ownerPassword = bcrypt.hashSync('owner1234', 12)
+const adminPassword = bcrypt.hashSync('admin1234', 12)
 
 async function main() {
   console.log('🌱 Seeding...')
@@ -11,10 +15,11 @@ async function main() {
 
   const owner = await prisma.user.upsert({
     where: { email: 'owner@kasirpro.com' },
-    update: {},
+    update: { password: ownerPassword, pin: '1234' },
     create: {
       name: 'Owner',
       email: 'owner@kasirpro.com',
+      password: ownerPassword,
       pin: '1234',
       role: 'SUPERADMIN',
       isActive: true,
@@ -39,10 +44,11 @@ async function main() {
 
   await prisma.user.upsert({
     where: { email: 'manager@kasirpro.com' },
-    update: { tenantId: tenant.id },
+    update: { tenantId: tenant.id, username: 'manager' },
     create: {
       name: 'Manager',
       email: 'manager@kasirpro.com',
+      username: 'manager',
       pin: '2345',
       role: 'MANAGER',
       isActive: true,
@@ -53,10 +59,11 @@ async function main() {
 
   await prisma.user.upsert({
     where: { email: 'kasir@kasirpro.com' },
-    update: { tenantId: tenant.id },
+    update: { tenantId: tenant.id, username: 'budi' },
     create: {
       name: 'Budi S.',
       email: 'kasir@kasirpro.com',
+      username: 'budi',
       pin: '3456',
       role: 'KASIR',
       isActive: true,
@@ -114,10 +121,11 @@ async function main() {
 
   await prisma.user.upsert({
     where: { email: 'admin@refaadstack.com' },
-    update: { isPlatformAdmin: true, emailVerifiedAt: new Date() },
+    update: { isPlatformAdmin: true, emailVerifiedAt: new Date(), password: adminPassword },
     create: {
       name: 'Platform Admin',
       email: 'admin@refaadstack.com',
+      password: adminPassword,
       pin: '9999',
       role: 'SUPERADMIN',
       isActive: true,
@@ -127,10 +135,9 @@ async function main() {
   })
 
   console.log('✅ Seed selesai')
-  console.log('   owner@kasirpro.com / PIN 1234')
-  console.log('   manager@kasirpro.com / PIN 2345')
-  console.log('   kasir@kasirpro.com / PIN 3456')
-  console.log('   admin@refaadstack.com / PIN 9999 (platform admin)')
+  console.log('   Owner   : owner@kasirpro.com / owner1234  (PIN approval 1234)')
+  console.log('   Staff   : /staff/kasirpro-demo → manager / 2345, budi / 3456')
+  console.log('   Platform: admin@refaadstack.com / admin1234')
 }
 
 main()

@@ -11,10 +11,10 @@ import { useToast } from '@/hooks/use-toast'
 type User = {
   id: string
   name: string
-  email: string
+  username: string | null
+  email: string | null
   role: string
-  is_active: boolean
-  created_at: string
+  isActive: boolean
 }
 
 export default function KaryawanPage() {
@@ -33,9 +33,10 @@ export default function KaryawanPage() {
     let filtered = users
 
     if (search) {
-      filtered = filtered.filter(u => 
+      filtered = filtered.filter(u =>
         u.name.toLowerCase().includes(search.toLowerCase()) ||
-        u.email.toLowerCase().includes(search.toLowerCase())
+        (u.username || '').toLowerCase().includes(search.toLowerCase()) ||
+        (u.email || '').toLowerCase().includes(search.toLowerCase())
       )
     }
 
@@ -78,14 +79,6 @@ export default function KaryawanPage() {
       default:
         return 'bg-white/20 text-white'
     }
-  }
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('id-ID', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    })
   }
 
   return (
@@ -193,20 +186,17 @@ export default function KaryawanPage() {
                         {user.role}
                       </span>
                       <span className={`px-2 py-0.5 rounded text-xs font-semibold ${
-                        user.is_active
+                        user.isActive
                           ? 'bg-green-400/20 text-green-400'
                           : 'bg-red-400/20 text-red-400'
                       }`}>
-                        {user.is_active ? 'Aktif' : 'Nonaktif'}
+                        {user.isActive ? 'Aktif' : 'Nonaktif'}
                       </span>
                     </div>
                     <div className="flex items-center gap-2 text-xs text-white/60 mb-2">
                       <Mail className="w-3 h-3" />
-                      <span>{user.email}</span>
+                      <span>{user.username ? `@${user.username}` : user.email || '-'}</span>
                     </div>
-                    <p className="text-xs text-white/40">
-                      Bergabung: {formatDate(user.created_at)}
-                    </p>
                   </div>
                 </div>
               </CardContent>
